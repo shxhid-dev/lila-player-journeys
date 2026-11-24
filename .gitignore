@@ -41,3 +41,6 @@ __pycache__/
 
 # raw telemetry (drop player_data.zip contents here, see README)
 /data/raw/
+
+# local editor/agent tooling
+.claude/

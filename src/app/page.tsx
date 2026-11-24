@@ -1,7 +1,10 @@
+import { Suspense } from "react";
+import { Explorer } from "@/components/explorer/explorer";
+
 export default function Home() {
   return (
-    <main className="flex h-full items-center justify-center">
-      <h1 className="text-lg font-medium text-muted">Player Journeys</h1>
-    </main>
+    <Suspense>
+      <Explorer />
+    </Suspense>
   );
 }
