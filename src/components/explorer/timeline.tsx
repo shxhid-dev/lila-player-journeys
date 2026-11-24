@@ -149,12 +149,12 @@ export function Timeline({ scene }: { scene: Scene }) {
         </Button>
       </div>
 
-      <div className="w-24 shrink-0 font-mono text-xs tabular-nums">
+      <div className="shrink-0 font-mono text-xs tabular-nums lg:w-24">
         <span className="text-foreground">{formatClock(Math.min(time, duration))}</span>
         <span className="text-muted"> / {formatClock(duration)}</span>
       </div>
 
-      <div className="relative min-w-0 flex-1">
+      <div className="relative min-w-[120px] flex-1">
         <div className="pointer-events-none absolute inset-x-0 -top-2.5 h-2" aria-hidden>
           {ticks.map((e) => (
             <span
@@ -195,8 +195,22 @@ export function Timeline({ scene }: { scene: Scene }) {
         Alive {alive.humans}H · {alive.bots}B
       </div>
 
+      {/* Narrow layouts: one button that cycles speeds, so the scrubber keeps its room. */}
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-12 justify-center tabular-nums xl:hidden"
+        disabled={disabled}
+        onClick={() =>
+          setSpeed(SPEEDS[(SPEEDS.indexOf(speed as (typeof SPEEDS)[number]) + 1) % SPEEDS.length])
+        }
+        aria-label={`Playback speed ${speed}×, click to change`}
+        title="Speed ([ / ])"
+      >
+        {speed}×
+      </Button>
       <div
-        className="flex shrink-0 rounded-md border border-border p-0.5"
+        className="hidden shrink-0 rounded-md border border-border p-0.5 xl:flex"
         role="group"
         aria-label="Playback speed"
       >
