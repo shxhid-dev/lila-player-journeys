@@ -10,7 +10,9 @@ import type { MapId } from "@/lib/maps";
 import type { Scene } from "@/lib/scene";
 import type { MinimapAsset } from "@/lib/types";
 import { useExplorer } from "@/store/explorer";
+import type { HeatGrid } from "@/lib/heatmap";
 import { CalibrationLayer } from "./calibration-layer";
+import { HeatLayer } from "./heat-layer";
 import { HoverCard } from "./hover-card";
 import { JourneysLayer } from "./journeys-layer";
 import { MarkersLayer } from "./markers-layer";
@@ -22,6 +24,7 @@ export interface MapCanvasProps {
   scene: Scene;
   /** Match seconds; everything up to this time is drawn. */
   time: number;
+  heat: { grid: HeatGrid; opacity: number } | null;
   calibration: boolean;
   onToggleCalibration: () => void;
 }
@@ -33,6 +36,7 @@ export default function MapCanvas({
   asset,
   scene,
   time,
+  heat,
   calibration,
   onToggleCalibration,
 }: MapCanvasProps) {
@@ -174,6 +178,7 @@ export default function MapCanvas({
             <Rect width={MINIMAP_SIZE} height={MINIMAP_SIZE} fill="#000" />
             {image && <KImage image={image} width={MINIMAP_SIZE} height={MINIMAP_SIZE} />}
           </Layer>
+          {heat && <HeatLayer grid={heat.grid} opacity={heat.opacity} />}
           {calibration && <CalibrationLayer mapId={mapId} scale={view.scale} />}
           <JourneysLayer
             journeys={scene.journeys}

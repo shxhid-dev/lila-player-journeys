@@ -49,7 +49,7 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
   };
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section className="flex min-h-[22rem] flex-1 flex-col">
       <SectionTitle
         aside={<span className="text-[11px] text-muted tabular-nums">{rows.length} matches</span>}
       >

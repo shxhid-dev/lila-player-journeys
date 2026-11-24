@@ -30,7 +30,6 @@ export const EVENT_STYLES: Record<EventType, EventStyle> = {
 
 /** Sequential heatmap ramp: one hue (blue), dark/transparent = low, light = high. */
 export const HEAT_RAMP = [
-  "#104281",
   "#1c5cab",
   "#2a78d6",
   "#3987e5",
