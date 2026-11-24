@@ -7,7 +7,9 @@ import { useManifest, useMatches } from "@/lib/data";
 import type { MapId } from "@/lib/maps";
 import { buildScene, pickFeaturedMatch } from "@/lib/scene";
 import { useExplorer } from "@/store/explorer";
+import { Filters } from "./filters";
 import { Legend } from "./legend";
+import { MatchList } from "./match-list";
 import { MatchPanel } from "./match-panel";
 import { TopBar } from "./top-bar";
 
@@ -27,13 +29,14 @@ export function Explorer() {
     return counts;
   }, [manifest.data]);
 
+  const mapMatches = useMemo(
+    () => (manifest.data?.matches ?? []).filter((m) => m.map === view.map),
+    [manifest.data, view.map],
+  );
   // Matches on this map within the date filter.
   const filteredMatches = useMemo(
-    () =>
-      (manifest.data?.matches ?? []).filter(
-        (m) => m.map === view.map && (view.dates.length === 0 || view.dates.includes(m.date)),
-      ),
-    [manifest.data, view.map, view.dates],
+    () => mapMatches.filter((m) => view.dates.length === 0 || view.dates.includes(m.date)),
+    [mapMatches, view.dates],
   );
 
   const selectedIds = useMemo(() => {
@@ -59,6 +62,20 @@ export function Explorer() {
         onMapChange={(map) => update({ map, matches: null, t: null })}
       />
       <div className="flex min-h-0 flex-1">
+        <aside className="hidden w-72 shrink-0 flex-col gap-4 border-r border-border bg-panel p-4 md:flex">
+          <Filters
+            view={view}
+            dates={manifest.data?.dates ?? []}
+            mapMatches={mapMatches}
+            update={update}
+          />
+          <MatchList
+            matches={filteredMatches}
+            selected={selectedIds}
+            onSelect={(ids) => update({ matches: ids, t: null })}
+            loading={manifest.isLoading}
+          />
+        </aside>
         <main className="relative min-w-0 flex-1">
           {manifest.isError ? (
             <div className="grid h-full place-items-center text-sm text-red-300">
