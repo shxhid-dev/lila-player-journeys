@@ -13,10 +13,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description =
+  "Level-design tool for exploring LILA BLACK player telemetry: journeys, combat events, heatmaps and match playback.";
+
 export const metadata: Metadata = {
+  // Absolute base so the Open Graph image resolves when a link is pasted into Slack.
+  metadataBase: new URL("https://lila-player-journeys-peach.vercel.app"),
   title: "LILA BLACK · Player Journeys",
-  description:
-    "Level-design tool for exploring LILA BLACK player telemetry: journeys, combat events, heatmaps and match playback.",
+  description,
+  openGraph: {
+    title: "LILA BLACK · Player Journeys",
+    description,
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "LILA BLACK · Player Journeys", description },
 };
 
 export const viewport: Viewport = {

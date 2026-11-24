@@ -105,7 +105,7 @@ export function Timeline({ scene }: { scene: Scene }) {
   return (
     <div
       className={cn(
-        "flex h-16 shrink-0 items-center gap-3 border-t border-border bg-panel px-4",
+        "flex h-16 shrink-0 items-center gap-2 border-t border-border bg-panel px-3 sm:gap-3 sm:px-4",
         disabled && "opacity-50",
       )}
       aria-label="Match playback"
@@ -118,6 +118,7 @@ export function Timeline({ scene }: { scene: Scene }) {
           title="Back to start (Home)"
           disabled={disabled}
           onClick={() => setTime(0)}
+          className="hidden sm:inline-flex"
         >
           <SkipBack className="h-4 w-4" />
         </Button>
@@ -144,6 +145,7 @@ export function Timeline({ scene }: { scene: Scene }) {
           title="Jump to end (End)"
           disabled={disabled}
           onClick={() => setTime(duration)}
+          className="hidden sm:inline-flex"
         >
           <SkipForward className="h-4 w-4" />
         </Button>
@@ -154,7 +156,7 @@ export function Timeline({ scene }: { scene: Scene }) {
         <span className="text-muted"> / {formatClock(duration)}</span>
       </div>
 
-      <div className="relative min-w-[120px] flex-1">
+      <div className="relative min-w-[90px] flex-1">
         {/* Event ticks double as jump points: click one to scrub to that moment. */}
         <div className="absolute inset-x-0 -top-3 h-3" role="group" aria-label="Combat events">
           {ticks.map((e) => (

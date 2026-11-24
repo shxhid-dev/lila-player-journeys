@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleHelp, Download, Link2 } from "lucide-react";
+import { CircleHelp, Download, Link2, PanelRight, SlidersHorizontal } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { binPoints, selectHeatPoints, shardHeatPoints } from "@/lib/heatmap";
 import type { MapId } from "@/lib/maps";
 import { buildScene, pickFeaturedMatch } from "@/lib/scene";
 import { HEAT_LAYERS } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useExplorer } from "@/store/explorer";
 import { Filters } from "./filters";
 import { HeatmapControls } from "./heatmap-controls";
@@ -123,6 +124,23 @@ export function Explorer() {
 
   const asset = manifest.data?.maps[view.map];
 
+  // A short hint on the canvas when the current settings draw nothing at all.
+  const canvasHint = (() => {
+    if (!manifest.data || shardsLoading) return null;
+    if (view.heat && !heatGrid && !heatQuery.isLoading)
+      return "No points for this heatmap with the current filters. Try another phase, date or player type.";
+    if (view.heat) return null;
+    if (selectedIds.length === 0)
+      return "No match selected. Pick one from the match list, or turn on a heatmap (H) to see every filtered match.";
+    if (scene.journeys.length === 0)
+      return "Every player is hidden by the Players filter or the player list.";
+    return null;
+  })();
+
+  // Below the md / lg breakpoints the side panels become drawers.
+  const [drawer, setDrawer] = useState<"filters" | "match" | null>(null);
+  const toggleDrawer = (d: "filters" | "match") => setDrawer((cur) => (cur === d ? null : d));
+
   // Share, export, help and global shortcuts.
   const [helpOpen, setHelpOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -169,6 +187,30 @@ export function Explorer() {
         onMapChange={(map) => update({ map, matches: null, t: null })}
         actions={
           <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden"
+              active={drawer === "filters"}
+              onClick={() => toggleDrawer("filters")}
+              aria-expanded={drawer === "filters"}
+              aria-controls="filters-panel"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only">Filters</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              active={drawer === "match"}
+              onClick={() => toggleDrawer("match")}
+              aria-expanded={drawer === "match"}
+              aria-controls="match-panel"
+            >
+              <PanelRight className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only">Match</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={copyLink} title="Copy link to this view (L)">
               <Link2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Copy link</span>
@@ -198,8 +240,26 @@ export function Explorer() {
           {toast}
         </div>
       )}
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-panel p-4 md:flex">
+      <div className="relative flex min-h-0 flex-1">
+        {drawer && (
+          <button
+            type="button"
+            aria-label="Close panel"
+            onClick={() => setDrawer(null)}
+            className={cn(
+              "absolute inset-0 z-20 bg-black/50",
+              drawer === "filters" ? "md:hidden" : "lg:hidden",
+            )}
+          />
+        )}
+        <aside
+          id="filters-panel"
+          className={cn(
+            "absolute inset-y-0 left-0 z-30 w-72 max-w-[85vw] shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-panel p-4 shadow-2xl",
+            "md:static md:z-auto md:flex md:max-w-none md:shadow-none",
+            drawer === "filters" ? "flex" : "hidden",
+          )}
+        >
           <Filters
             view={view}
             dates={manifest.data?.dates ?? []}
@@ -217,7 +277,10 @@ export function Explorer() {
           <MatchList
             matches={filteredMatches}
             selected={selectedIds}
-            onSelect={(ids) => update({ matches: ids, t: null })}
+            onSelect={(ids) => {
+              update({ matches: ids, t: null });
+              setDrawer(null);
+            }}
             loading={manifest.isLoading}
           />
         </aside>
@@ -234,6 +297,7 @@ export function Explorer() {
                 scene={scene}
                 time={time}
                 heat={heatGrid ? { grid: heatGrid, opacity: view.heatOpacity } : null}
+                hint={canvasHint}
                 calibration={view.calibration}
                 onToggleCalibration={() => update((s) => ({ calibration: !s.calibration }))}
               />
@@ -243,7 +307,14 @@ export function Explorer() {
           </div>
           <Timeline scene={scene} />
         </main>
-        <aside className="hidden w-80 shrink-0 flex-col gap-6 overflow-y-auto border-l border-border bg-panel p-4 lg:flex">
+        <aside
+          id="match-panel"
+          className={cn(
+            "absolute inset-y-0 right-0 z-30 w-80 max-w-[90vw] shrink-0 flex-col gap-6 overflow-y-auto border-l border-border bg-panel p-4 shadow-2xl",
+            "lg:static lg:z-auto lg:flex lg:max-w-none lg:shadow-none",
+            drawer === "match" ? "flex" : "hidden",
+          )}
+        >
           <MatchPanel
             mapId={view.map}
             shards={shards}

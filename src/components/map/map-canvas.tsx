@@ -25,6 +25,8 @@ export interface MapCanvasProps {
   /** Match seconds; everything up to this time is drawn. */
   time: number;
   heat: { grid: HeatGrid; opacity: number } | null;
+  /** Shown over the map when the current settings draw nothing. */
+  hint?: string | null;
   calibration: boolean;
   onToggleCalibration: () => void;
 }
@@ -37,6 +39,7 @@ export default function MapCanvas({
   scene,
   time,
   heat,
+  hint,
   calibration,
   onToggleCalibration,
 }: MapCanvasProps) {
@@ -206,6 +209,17 @@ export default function MapCanvas({
       )}
 
       {hover && <HoverCard hover={hover} scene={scene} bounds={size} />}
+
+      {hint && base && (
+        <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center px-16">
+          <p
+            role="status"
+            className="max-w-md rounded-lg border border-border bg-panel/90 px-4 py-2.5 text-center text-sm text-muted shadow-lg backdrop-blur"
+          >
+            {hint}
+          </p>
+        </div>
+      )}
 
       {calibration && cursor && (
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-border bg-panel/90 px-2.5 py-1.5 font-mono text-xs text-foreground tabular-nums">

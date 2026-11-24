@@ -114,5 +114,5 @@ src/components/explorer/  sidebar, match panel, timeline, dialogs
 - **"Survived" ≠ "extracted".** There is no extraction event. A run without a death could be either
   an extraction or a disconnect.
 - **1-second timestamps.** Events within the same second are ordered as they appear in the file.
-- **Desktop-first.** It works on mobile (pinch zoom, touch scrubbing), but the sidebars collapse
-  below tablet width.
+- **Desktop-first.** It works on phones and tablets (pinch zoom, touch scrubbing, Filters and
+  Match drawers), but the full three-panel layout is meant for a laptop or larger.
