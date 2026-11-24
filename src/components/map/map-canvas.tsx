@@ -1,24 +1,32 @@
 "use client";
 
 import type Konva from "konva";
-import { Maximize, Minus, Plus } from "lucide-react";
+import { Grid3x3, Maximize, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Image as KImage, Layer, Rect, Stage } from "react-konva";
 import { Button } from "@/components/ui/button";
-import { MINIMAP_SIZE } from "@/lib/coords";
+import { MINIMAP_SIZE, minimapToWorld } from "@/lib/coords";
 import type { MapId } from "@/lib/maps";
 import type { MinimapAsset } from "@/lib/types";
 import { useExplorer } from "@/store/explorer";
+import { CalibrationLayer } from "./calibration-layer";
 import { useHtmlImage } from "./use-html-image";
 
 export interface MapCanvasProps {
   mapId: MapId;
   asset: MinimapAsset;
+  calibration: boolean;
+  onToggleCalibration: () => void;
 }
 
 const WHEEL_STEP = 1.15;
 
-export default function MapCanvas({ mapId, asset }: MapCanvasProps) {
+export default function MapCanvas({
+  mapId,
+  asset,
+  calibration,
+  onToggleCalibration,
+}: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const { size, view, setSize, setView, fit, zoomBy, setStage } = useExplorer();
@@ -89,6 +97,21 @@ export default function MapCanvas({ mapId, asset }: MapCanvasProps) {
     [zoomBy],
   );
 
+  // Cursor readout for the calibration overlay: screen -> minimap -> world.
+  const [cursor, setCursor] = useState<{ px: number; py: number; x: number; z: number } | null>(
+    null,
+  );
+  const onPointerMove = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      const p = e.target.getStage()?.getPointerPosition();
+      if (!p) return;
+      const px = (p.x - view.x) / view.scale;
+      const py = (p.y - view.y) / view.scale;
+      setCursor({ px, py, ...minimapToWorld(px, py, mapId) });
+    },
+    [view, mapId],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -112,12 +135,24 @@ export default function MapCanvas({ mapId, asset }: MapCanvasProps) {
             if (e.target !== e.target.getStage()) return;
             setView({ scale: view.scale, x: e.target.x(), y: e.target.y() });
           }}
+          onMouseMove={calibration ? onPointerMove : undefined}
+          onMouseLeave={() => setCursor(null)}
         >
           <Layer listening={false}>
             <Rect width={MINIMAP_SIZE} height={MINIMAP_SIZE} fill="#000" />
             {image && <KImage image={image} width={MINIMAP_SIZE} height={MINIMAP_SIZE} />}
           </Layer>
+          {calibration && <CalibrationLayer mapId={mapId} scale={view.scale} />}
         </Stage>
+      )}
+
+      {calibration && cursor && (
+        <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-border bg-panel/90 px-2.5 py-1.5 font-mono text-xs text-foreground tabular-nums">
+          world x {cursor.x.toFixed(1)} · z {cursor.z.toFixed(1)}
+          <span className="text-muted">
+            {"  "}minimap {cursor.px.toFixed(0)}, {cursor.py.toFixed(0)} / {MINIMAP_SIZE}
+          </span>
+        </div>
       )}
 
       {!base && (
@@ -143,6 +178,16 @@ export default function MapCanvas({ mapId, asset }: MapCanvasProps) {
         </Button>
         <Button size="icon" aria-label="Reset view" title="Reset view (0)" onClick={fit}>
           <Maximize className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          aria-label="Calibration grid"
+          title="Calibration grid (G): world-space grid drawn through the same transform as the data"
+          active={calibration}
+          onClick={onToggleCalibration}
+          className="mt-2"
+        >
+          <Grid3x3 className="h-4 w-4" />
         </Button>
       </div>
     </div>

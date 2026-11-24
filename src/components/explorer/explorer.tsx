@@ -37,7 +37,12 @@ export function Explorer() {
             Could not load telemetry data. Try reloading the page.
           </div>
         ) : asset ? (
-          <MapCanvas mapId={view.map} asset={asset} />
+          <MapCanvas
+            mapId={view.map}
+            asset={asset}
+            calibration={view.calibration}
+            onToggleCalibration={() => update((s) => ({ calibration: !s.calibration }))}
+          />
         ) : (
           <div className="h-full w-full animate-pulse bg-[#07080a]" />
         )}
