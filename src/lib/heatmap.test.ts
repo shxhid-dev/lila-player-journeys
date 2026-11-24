@@ -67,6 +67,28 @@ describe("selectHeatPoints", () => {
   });
 });
 
+describe("match phase filter", () => {
+  const pts: HeatPoints = {
+    map: "Lockdown",
+    count: 4,
+    x: [1, 2, 3, 4],
+    z: [0, 0, 0, 0],
+    t: [0, 179, 180, 700],
+    e: [0, 0, 0, 0],
+    k: [0, 0, 0, 0],
+    d: [0, 0, 0, 0],
+  };
+  const pick = (phase: "all" | "early" | "mid" | "late") =>
+    selectHeatPoints(pts, { layer: "traffic", players: ["human"], dateIdx: [], phase }).x;
+
+  it("splits points into half-open [from, to) phases with no gaps or overlaps", () => {
+    expect(pick("early")).toEqual([1, 2]);
+    expect(pick("mid")).toEqual([3]);
+    expect(pick("late")).toEqual([4]);
+    expect(pick("all")).toEqual([1, 2, 3, 4]);
+  });
+});
+
 describe("shardHeatPoints", () => {
   const shard: MatchShard = {
     id: "m",
@@ -94,5 +116,12 @@ describe("shardHeatPoints", () => {
     expect(shardHeatPoints([shard], "storm", ["human"]).length).toBe(1);
     expect(shardHeatPoints([shard], "kills", ["human"]).length).toBe(0);
     expect(shardHeatPoints([shard], "traffic", ["bot"]).length).toBe(0);
+  });
+
+  it("applies the match phase to path samples and events", () => {
+    // Path samples at t=0 and t=5; the storm death is at t=10.
+    expect(shardHeatPoints([shard], "traffic", ["human"], "early").length).toBe(2);
+    expect(shardHeatPoints([shard], "traffic", ["human"], "late").length).toBe(0);
+    expect(shardHeatPoints([shard], "storm", ["human"], "mid").length).toBe(0);
   });
 });

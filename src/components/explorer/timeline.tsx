@@ -155,14 +155,27 @@ export function Timeline({ scene }: { scene: Scene }) {
       </div>
 
       <div className="relative min-w-[120px] flex-1">
-        <div className="pointer-events-none absolute inset-x-0 -top-2.5 h-2" aria-hidden>
+        {/* Event ticks double as jump points: click one to scrub to that moment. */}
+        <div className="absolute inset-x-0 -top-3 h-3" role="group" aria-label="Combat events">
           {ticks.map((e) => (
-            <span
+            <button
               key={e.key}
-              className="absolute top-0 h-2 w-0.5 -translate-x-1/2 rounded-full"
-              style={{ left: `${e.left}%`, background: EVENT_STYLES[e.type].color }}
-              title={`${formatClock(e.t)} ${describeEvent(e.type, e.detail)}`}
-            />
+              type="button"
+              tabIndex={-1}
+              onClick={() => {
+                setPlaying(false);
+                setTime(e.t);
+              }}
+              className="group absolute top-0 flex h-3 w-2 -translate-x-1/2 justify-center"
+              style={{ left: `${e.left}%` }}
+              title={`${formatClock(e.t)} · ${describeEvent(e.type, e.detail)} (click to jump)`}
+              aria-label={`Jump to ${formatClock(e.t)}: ${describeEvent(e.type, e.detail)}`}
+            >
+              <span
+                className="mt-0.5 h-2 w-0.5 rounded-full transition-transform group-hover:scale-y-150"
+                style={{ background: EVENT_STYLES[e.type].color }}
+              />
+            </button>
           ))}
         </div>
         <Slider.Root

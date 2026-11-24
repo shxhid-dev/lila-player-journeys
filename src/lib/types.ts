@@ -77,6 +77,21 @@ export const HEAT_CODES = { traffic: 0, kills: 1, deaths: 2, storm: 3, loot: 4 }
 export type HeatLayer = keyof typeof HEAT_CODES;
 export const HEAT_LAYERS = Object.keys(HEAT_CODES) as HeatLayer[];
 
+/**
+ * Match phases for time-sliced heatmaps, in match seconds [from, to). The 8:00 cut
+ * is roughly where survivors start leaving (median exit ~8:20) and before the
+ * storm's first kill (10:55), so "late" isolates the extraction and storm endgame.
+ */
+export const HEAT_PHASES = {
+  all: { label: "Whole match", from: 0, to: Infinity },
+  early: { label: "0–3 min", from: 0, to: 180 },
+  mid: { label: "3–8 min", from: 180, to: 480 },
+  late: { label: "8 min+", from: 480, to: Infinity },
+} as const;
+export type HeatPhase = keyof typeof HEAT_PHASES;
+export const isHeatPhase = (v: unknown): v is HeatPhase =>
+  typeof v === "string" && Object.hasOwn(HEAT_PHASES, v);
+
 /** Columnar heatmap points for one map. `k`: 0 human, 1 bot. `d`: index into Manifest.dates. */
 export interface HeatPoints {
   map: MapId;

@@ -96,6 +96,7 @@ export function Explorer() {
         shards.filter((s) => s.map === view.map),
         view.heat,
         view.players,
+        view.heatPhase,
       );
     } else if (heatQuery.data && manifest.data) {
       const allDates = manifest.data.dates;
@@ -103,6 +104,7 @@ export function Explorer() {
         layer: view.heat,
         players: view.players,
         dateIdx: view.dates.map((d) => allDates.indexOf(d)).filter((i) => i >= 0),
+        phase: view.heatPhase,
       });
     } else return null;
     return points.length ? binPoints(points, view.map, view.heatBin) : null;
@@ -110,6 +112,7 @@ export function Explorer() {
     view.heat,
     view.heatScope,
     view.heatBin,
+    view.heatPhase,
     view.map,
     view.players,
     view.dates,

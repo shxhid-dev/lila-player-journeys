@@ -1,5 +1,13 @@
 import { isMapId, type MapId } from "./maps";
-import { EVENT_TYPES, HEAT_LAYERS, type EventType, type HeatLayer, type PlayerKind } from "./types";
+import {
+  EVENT_TYPES,
+  HEAT_LAYERS,
+  isHeatPhase,
+  type EventType,
+  type HeatLayer,
+  type HeatPhase,
+  type PlayerKind,
+} from "./types";
 
 /**
  * Everything a Level Designer might want to share lives in the URL, so a pasted
@@ -23,6 +31,8 @@ export interface ViewState {
   heatOpacity: number;
   /** Heatmap cell size in minimap pixels (of 1024). */
   heatBin: number;
+  /** Only count heatmap points from this part of the match. */
+  heatPhase: HeatPhase;
   calibration: boolean;
   /** Playback time in match seconds. null = end of match (full paths). */
   t: number | null;
@@ -42,6 +52,7 @@ export const DEFAULT_VIEW: ViewState = {
   heatScope: "filtered",
   heatOpacity: 0.7,
   heatBin: 8,
+  heatPhase: "all",
   calibration: false,
   t: null,
 };
@@ -79,6 +90,7 @@ export function parseViewState(params: URLSearchParams): ViewState {
     heatOpacity:
       params.has("opacity") && opacity >= 0 && opacity <= 1 ? opacity : DEFAULT_VIEW.heatOpacity,
     heatBin: (HEAT_BINS as readonly number[]).includes(bin) ? bin : DEFAULT_VIEW.heatBin,
+    heatPhase: isHeatPhase(params.get("phase")) ? (params.get("phase") as HeatPhase) : "all",
     calibration: params.get("grid") === "1",
     t: Number.isFinite(tNum) && tNum >= 0 ? Math.floor(tNum) : null,
   };
@@ -99,6 +111,7 @@ export function serializeViewState(s: ViewState): string {
   if (s.heatScope !== DEFAULT_VIEW.heatScope) p.set("scope", s.heatScope);
   if (s.heatOpacity !== DEFAULT_VIEW.heatOpacity) p.set("opacity", s.heatOpacity.toFixed(2));
   if (s.heatBin !== DEFAULT_VIEW.heatBin) p.set("bin", String(s.heatBin));
+  if (s.heatPhase !== DEFAULT_VIEW.heatPhase) p.set("phase", s.heatPhase);
   if (s.calibration) p.set("grid", "1");
   if (s.t !== null) p.set("t", String(Math.floor(s.t)));
   // URLSearchParams encodes commas; they are safe in a query string and read better unescaped.

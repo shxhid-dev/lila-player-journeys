@@ -4,8 +4,41 @@ import * as Slider from "@radix-ui/react-slider";
 import { SectionTitle, ToggleChip } from "@/components/ui/toggle-chip";
 import { HEAT_RAMP } from "@/lib/colors";
 import type { HeatGrid } from "@/lib/heatmap";
-import { HEAT_LAYERS, type HeatLayer } from "@/lib/types";
+import { HEAT_LAYERS, HEAT_PHASES, type HeatLayer, type HeatPhase } from "@/lib/types";
 import { HEAT_BINS, type ViewState } from "@/lib/url-state";
+import { cn } from "@/lib/utils";
+
+/** Single-choice button group. aria-pressed marks the active option. */
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: [T, string][];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex rounded-md border border-border p-0.5" role="group" aria-label={label}>
+      {options.map(([key, text]) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={value === key}
+          onClick={() => onChange(key)}
+          className={cn(
+            "flex-1 rounded px-1.5 py-1 whitespace-nowrap",
+            value === key ? "bg-panel-raised text-foreground" : "text-muted hover:text-foreground",
+          )}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export const HEAT_LABELS: Record<HeatLayer, string> = {
   traffic: "Traffic",
@@ -49,31 +82,27 @@ export function HeatmapControls({
 
       {on && (
         <div className="mt-3 space-y-3 text-xs">
-          <div
-            className="flex rounded-md border border-border p-0.5"
-            role="group"
-            aria-label="Heatmap scope"
-          >
-            {(
-              [
-                ["filtered", `All filtered (${filteredCount})`],
-                ["selected", `Selected (${selectedCount})`],
-              ] as const
-            ).map(([scope, label]) => (
-              <button
-                key={scope}
-                type="button"
-                aria-pressed={view.heatScope === scope}
-                onClick={() => update({ heatScope: scope })}
-                className={
-                  view.heatScope === scope
-                    ? "flex-1 rounded bg-panel-raised px-2 py-1 text-foreground"
-                    : "flex-1 rounded px-2 py-1 text-muted hover:text-foreground"
-                }
-              >
-                {label}
-              </button>
-            ))}
+          <Segmented
+            label="Heatmap scope"
+            value={view.heatScope}
+            onChange={(heatScope) => update({ heatScope })}
+            options={[
+              ["filtered", `All filtered (${filteredCount})`],
+              ["selected", `Selected (${selectedCount})`],
+            ]}
+          />
+
+          <div>
+            <span className="mb-1.5 block text-muted">Match phase</span>
+            <Segmented
+              label="Match phase"
+              value={view.heatPhase}
+              onChange={(heatPhase) => update({ heatPhase })}
+              options={(Object.keys(HEAT_PHASES) as HeatPhase[]).map((p) => [
+                p,
+                p === "all" ? "All" : HEAT_PHASES[p].label,
+              ])}
+            />
           </div>
 
           <label className="block">

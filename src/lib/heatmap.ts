@@ -3,7 +3,9 @@ import { MINIMAP_SIZE, worldToMinimap } from "./coords";
 import type { MapId } from "./maps";
 import {
   HEAT_CODES,
+  HEAT_PHASES,
   type HeatLayer,
+  type HeatPhase,
   type HeatPoints,
   type MatchShard,
   type PlayerKind,
@@ -31,7 +33,11 @@ export interface HeatFilter {
   players: PlayerKind[];
   /** Indices into Manifest.dates; empty = all. */
   dateIdx: number[];
+  phase?: HeatPhase;
 }
+
+const inPhase = (t: number, phase: HeatPhase = "all") =>
+  t >= HEAT_PHASES[phase].from && t < HEAT_PHASES[phase].to;
 
 /** Pick the points for one layer from a map's columnar heat file. */
 export function selectHeatPoints(points: HeatPoints, f: HeatFilter): WorldPoints {
@@ -45,6 +51,7 @@ export function selectHeatPoints(points: HeatPoints, f: HeatFilter): WorldPoints
     if (points.e[i] !== code) continue;
     if (points.k[i] === 0 ? !wantHuman : !wantBot) continue;
     if (dates && !dates.has(points.d[i])) continue;
+    if (!inPhase(points.t[i], f.phase)) continue;
     x.push(points.x[i]);
     z.push(points.z[i]);
   }
@@ -63,6 +70,7 @@ export function shardHeatPoints(
   shards: MatchShard[],
   layer: HeatLayer,
   players: PlayerKind[],
+  phase: HeatPhase = "all",
 ): WorldPoints {
   const x: number[] = [];
   const z: number[] = [];
@@ -71,12 +79,13 @@ export function shardHeatPoints(
       if (!players.includes(j.kind)) continue;
       if (layer === "traffic") {
         for (let i = 0; i < j.path.length; i += 3) {
+          if (!inPhase(j.path[i], phase)) continue;
           x.push(j.path[i + 1]);
           z.push(j.path[i + 2]);
         }
       } else {
-        for (const [, type, ex, ez] of j.events) {
-          if (type === LAYER_EVENT[layer]) {
+        for (const [t, type, ex, ez] of j.events) {
+          if (type === LAYER_EVENT[layer] && inPhase(t, phase)) {
             x.push(ex);
             z.push(ez);
           }

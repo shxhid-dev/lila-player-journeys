@@ -23,6 +23,7 @@ describe("url state", () => {
       heatScope: "selected",
       heatOpacity: 0.45,
       heatBin: 16,
+      heatPhase: "late",
       calibration: true,
       t: 312,
     };
@@ -57,7 +58,7 @@ describe("url state", () => {
 
   it("ignores malformed values instead of crashing", () => {
     const s = parse(
-      "map=Atlantis&dates=yesterday&match=../../etc&players=alien&heat=fire&opacity=7&bin=3&t=-4",
+      "map=Atlantis&dates=yesterday&match=../../etc&players=alien&heat=fire&opacity=7&bin=3&t=-4&phase=toString",
     );
     expect(s).toEqual({ ...DEFAULT_VIEW, matches: [], players: [] });
   });

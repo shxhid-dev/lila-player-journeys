@@ -64,6 +64,12 @@ export default function MapCanvas({
       setHover(key && p ? { kind: "event", key, x: p.x, y: p.y } : null),
     [setHover],
   );
+  // Pointer over anything with a hover card; otherwise the container's grab cursor shows.
+  const hovering = hover !== null;
+  useEffect(() => {
+    const el = stageRef.current?.container();
+    if (el) el.style.cursor = hovering ? "pointer" : "";
+  }, [hovering]);
   // Selection changes can remove whatever was hovered.
   useEffect(() => setHover(null), [scene, setHover]);
 
@@ -153,7 +159,7 @@ export default function MapCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full overflow-hidden bg-[#07080a]"
+      className="relative h-full w-full cursor-grab overflow-hidden bg-[#07080a] active:cursor-grabbing"
       data-testid="map-canvas"
     >
       {size.w > 0 && (
