@@ -1,6 +1,7 @@
 # LILA BLACK · Player Journeys
 
-**Live tool:** _deploy URL goes here once the Vercel project is connected_
+**Live tool: https://lila-player-journeys-peach.vercel.app**. No login, desktop browser
+recommended. Press `?` in the app for a quick guide.
 
 A browser tool for Level Designers to see how players actually move through LILA BLACK's maps.
 It covers 5 days of production telemetry (796 matches, 89k events) drawn on the real minimaps. You

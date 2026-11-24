@@ -3,7 +3,8 @@
 Three findings from the tool, covering 798 human runs across 796 matches (10–14 Feb 2026). Every
 number can be reproduced with `python scripts/insights.py`, and every image is a screenshot of the
 tool itself. Zone coordinates are world `(x, z)` and can be checked with the calibration grid
-(press **G**). Each "View" query string, appended to the deployed URL, reopens the exact view.
+(press **G**). Each "Open … view" link reopens that exact view in the
+[live tool](https://lila-player-journeys-peach.vercel.app).
 
 ---
 
@@ -30,7 +31,7 @@ a route problem, so I compared how runs end once a match gets long.
 
 ![Lockdown storm-death heatmap, humans only, all dates](docs/img/insight-lockdown-storm-deaths.jpg)
 _Lockdown · Heatmap: Storm deaths · Players: Humans · all 171 matches._
-View: `?map=Lockdown&match=none&players=human&heat=storm&opacity=0.95&bin=16`
+[Open this view in the tool](https://lila-player-journeys-peach.vercel.app/?map=Lockdown&match=none&players=human&heat=storm&opacity=0.95&bin=16)
 
 **What to do.**
 
@@ -74,8 +75,8 @@ pickups:
 ![Ambrose Valley loot heatmap with calibration grid](docs/img/insight-ambrose-loot.jpg)
 _Ambrose Valley, humans only, calibration grid on. Deaths (top) sit in the central band. Loot
 (bottom) also covers the southern compounds (z < −190), where nobody died in 5 days._
-Views: `?match=none&players=human&heat=deaths&opacity=0.95&bin=16&grid=1` and
-`?match=none&players=human&heat=loot&opacity=0.95&bin=16&grid=1`
+[Open the deaths view](https://lila-player-journeys-peach.vercel.app/?match=none&players=human&heat=deaths&opacity=0.95&bin=16&grid=1) ·
+[Open the loot view](https://lila-player-journeys-peach.vercel.app/?match=none&players=human&heat=loot&opacity=0.95&bin=16&grid=1)
 
 **What to do.**
 
