@@ -9,8 +9,11 @@ import type { EventType } from "./types";
 export const HUMAN_COLORS = ["#3987e5", "#d95926", "#199e70"] as const;
 /** A 4th+ human (only possible when the 2-human match is compared): primary ink, still solid. */
 export const HUMAN_OVERFLOW_COLOR = "#f0efec";
-/** Bots: one desaturated neutral, dashed. Identity comes from hover, not hue. */
-export const BOT_COLOR = "#a9a8a0";
+/**
+ * Bots: one desaturated light neutral, dashed. It has to be light because bots mostly
+ * travel along the grey roads, where a mid-grey disappears. Identity comes from hover, not hue.
+ */
+export const BOT_COLOR = "#d6d5cf";
 /** Dark casing drawn under every mark so it reads on any minimap. */
 export const CASING = "#0b0d10";
 

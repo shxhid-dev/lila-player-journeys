@@ -16,7 +16,7 @@ interface JourneysLayerProps {
 }
 
 const HUMAN_WIDTH = 2.25;
-const BOT_WIDTH = 1.25;
+const BOT_WIDTH = 1.5;
 
 function JourneyPath({
   sj,
@@ -39,7 +39,7 @@ function JourneyPath({
   const isHuman = sj.journey.kind === "human";
   const width = (isHuman ? HUMAN_WIDTH : BOT_WIDTH) * (emphasized ? 1.6 : 1);
   const inv = 1 / scale;
-  const opacity = dimmed ? 0.18 : isHuman ? 1 : 0.7;
+  const opacity = dimmed ? 0.18 : isHuman ? 1 : 0.85;
   const last = sj.projected.points.length;
 
   return (
@@ -50,7 +50,7 @@ function JourneyPath({
             points={points}
             stroke={CASING}
             strokeWidth={width + 2.5}
-            opacity={0.65}
+            opacity={isHuman ? 0.65 : 0.9}
             lineJoin="round"
             lineCap="round"
             strokeScaleEnabled={false}
