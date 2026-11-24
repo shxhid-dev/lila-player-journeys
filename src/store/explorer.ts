@@ -20,7 +20,10 @@ interface ExplorerState {
   /** True once the user pans or zooms; until then the map refits on resize. */
   userMoved: boolean;
   stage: Konva.Stage | null;
+  /** Journeys the user switched off in the player list, by journeyKey. */
+  hidden: ReadonlySet<string>;
 
+  toggleHidden: (key: string) => void;
   setSize: (w: number, h: number) => void;
   setView: (view: Viewport, byUser?: boolean) => void;
   fit: () => void;
@@ -42,7 +45,14 @@ export const useExplorer = create<ExplorerState>((set, get) => ({
   view: { scale: 1, x: 0, y: 0 },
   userMoved: false,
   stage: null,
+  hidden: new Set(),
 
+  toggleHidden: (key) => {
+    const hidden = new Set(get().hidden);
+    if (hidden.has(key)) hidden.delete(key);
+    else hidden.add(key);
+    set({ hidden });
+  },
   setSize: (w, h) => {
     const { userMoved } = get();
     set(userMoved ? { size: { w, h } } : { size: { w, h }, view: fitViewport(w, h) });

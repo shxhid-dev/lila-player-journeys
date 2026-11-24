@@ -7,14 +7,20 @@ import { Image as KImage, Layer, Rect, Stage } from "react-konva";
 import { Button } from "@/components/ui/button";
 import { MINIMAP_SIZE, minimapToWorld } from "@/lib/coords";
 import type { MapId } from "@/lib/maps";
+import type { Scene } from "@/lib/scene";
 import type { MinimapAsset } from "@/lib/types";
 import { useExplorer } from "@/store/explorer";
 import { CalibrationLayer } from "./calibration-layer";
+import { JourneysLayer } from "./journeys-layer";
+import { MarkersLayer } from "./markers-layer";
 import { useHtmlImage } from "./use-html-image";
 
 export interface MapCanvasProps {
   mapId: MapId;
   asset: MinimapAsset;
+  scene: Scene;
+  /** Match seconds; everything up to this time is drawn. */
+  time: number;
   calibration: boolean;
   onToggleCalibration: () => void;
 }
@@ -24,6 +30,8 @@ const WHEEL_STEP = 1.15;
 export default function MapCanvas({
   mapId,
   asset,
+  scene,
+  time,
   calibration,
   onToggleCalibration,
 }: MapCanvasProps) {
@@ -143,6 +151,13 @@ export default function MapCanvas({
             {image && <KImage image={image} width={MINIMAP_SIZE} height={MINIMAP_SIZE} />}
           </Layer>
           {calibration && <CalibrationLayer mapId={mapId} scale={view.scale} />}
+          <JourneysLayer
+            journeys={scene.journeys}
+            time={time}
+            scale={view.scale}
+            highlight={null}
+          />
+          <MarkersLayer events={scene.events} time={time} scale={view.scale} highlight={null} />
         </Stage>
       )}
 

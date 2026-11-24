@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { MapId } from "./maps";
 import type { HeatPoints, Manifest, MatchShard } from "./types";
 
@@ -21,6 +21,15 @@ export function useManifest() {
   });
 }
 
+// Module-level so TanStack can memoize the combined result between renders.
+function combineShards(results: UseQueryResult<MatchShard>[]) {
+  return {
+    shards: results.map((r) => r.data).filter((s): s is MatchShard => Boolean(s)),
+    isLoading: results.some((r) => r.isLoading),
+    isError: results.some((r) => r.isError),
+  };
+}
+
 export function useMatches(ids: string[]) {
   return useQueries({
     queries: ids.map((id) => ({
@@ -28,6 +37,7 @@ export function useMatches(ids: string[]) {
       queryFn: () => getJson<MatchShard>(`/data/matches/${id}.json`),
       ...STATIC,
     })),
+    combine: combineShards,
   });
 }
 
