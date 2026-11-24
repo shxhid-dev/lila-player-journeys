@@ -11,6 +11,7 @@ import type { Scene } from "@/lib/scene";
 import type { MinimapAsset } from "@/lib/types";
 import { useExplorer } from "@/store/explorer";
 import { CalibrationLayer } from "./calibration-layer";
+import { HoverCard } from "./hover-card";
 import { JourneysLayer } from "./journeys-layer";
 import { MarkersLayer } from "./markers-layer";
 import { useHtmlImage } from "./use-html-image";
@@ -38,6 +39,29 @@ export default function MapCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const { size, view, setSize, setView, fit, zoomBy, setStage } = useExplorer();
+  const hover = useExplorer((s) => s.hover);
+  const focus = useExplorer((s) => s.focus);
+  const setHover = useExplorer((s) => s.setHover);
+
+  // A hovered event marker highlights the journey it belongs to.
+  const hoveredEvent =
+    hover?.kind === "event" ? scene.events.find((e) => e.key === hover.key) : undefined;
+  const highlight =
+    focus ??
+    (hover ? (hover.kind === "journey" ? hover.key : (hoveredEvent?.journeyKey ?? null)) : null);
+
+  const onJourneyHover = useCallback(
+    (key: string | null, p?: { x: number; y: number }) =>
+      setHover(key && p ? { kind: "journey", key, x: p.x, y: p.y } : null),
+    [setHover],
+  );
+  const onEventHover = useCallback(
+    (key: string | null, p?: { x: number; y: number }) =>
+      setHover(key && p ? { kind: "event", key, x: p.x, y: p.y } : null),
+    [setHover],
+  );
+  // Selection changes can remove whatever was hovered.
+  useEffect(() => setHover(null), [scene, setHover]);
 
   // Track the container size; the store refits until the user takes control.
   useEffect(() => {
@@ -155,11 +179,20 @@ export default function MapCanvas({
             journeys={scene.journeys}
             time={time}
             scale={view.scale}
-            highlight={null}
+            highlight={highlight}
+            onHover={onJourneyHover}
           />
-          <MarkersLayer events={scene.events} time={time} scale={view.scale} highlight={null} />
+          <MarkersLayer
+            events={scene.events}
+            time={time}
+            scale={view.scale}
+            highlight={highlight}
+            onHover={onEventHover}
+          />
         </Stage>
       )}
+
+      {hover && <HoverCard hover={hover} scene={scene} bounds={size} />}
 
       {calibration && cursor && (
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md border border-border bg-panel/90 px-2.5 py-1.5 font-mono text-xs text-foreground tabular-nums">

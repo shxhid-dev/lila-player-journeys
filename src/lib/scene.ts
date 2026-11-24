@@ -49,20 +49,37 @@ export interface SceneFilters {
   hidden: ReadonlySet<string>;
 }
 
+/**
+ * Colour per journey across the whole selection. Colour follows the entity: it is
+ * assigned before any filtering, so toggling filters never repaints anyone.
+ */
+export function journeyColors(shards: MatchShard[], mapId: MapId): Map<string, string> {
+  const colors = new Map<string, string>();
+  let humanIndex = 0;
+  for (const shard of shards) {
+    if (shard.map !== mapId) continue;
+    for (const j of shard.journeys) {
+      colors.set(
+        journeyKey(shard.id, j.id),
+        j.kind === "human" ? (HUMAN_COLORS[humanIndex++] ?? HUMAN_OVERFLOW_COLOR) : BOT_COLOR,
+      );
+    }
+  }
+  return colors;
+}
+
 export function buildScene(shards: MatchShard[], mapId: MapId, filters: SceneFilters): Scene {
   const journeys: SceneJourney[] = [];
   const events: SceneEvent[] = [];
-  let humanIndex = 0;
+  const colors = journeyColors(shards, mapId);
   let duration = 0;
 
   for (const shard of shards) {
     if (shard.map !== mapId) continue;
     duration = Math.max(duration, shard.duration);
     for (const journey of shard.journeys) {
-      // Colour follows the entity: assign before filtering so toggles never repaint.
-      const color =
-        journey.kind === "human" ? (HUMAN_COLORS[humanIndex++] ?? HUMAN_OVERFLOW_COLOR) : BOT_COLOR;
       const key = journeyKey(shard.id, journey.id);
+      const color = colors.get(key) ?? BOT_COLOR;
       if (!filters.players.includes(journey.kind) || filters.hidden.has(key)) continue;
 
       journeys.push({

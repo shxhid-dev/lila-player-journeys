@@ -8,6 +8,7 @@ import type { MapId } from "@/lib/maps";
 import { buildScene, pickFeaturedMatch } from "@/lib/scene";
 import { useExplorer } from "@/store/explorer";
 import { Legend } from "./legend";
+import { MatchPanel } from "./match-panel";
 import { TopBar } from "./top-bar";
 
 const MapCanvas = dynamic(() => import("@/components/map/map-canvas"), {
@@ -41,7 +42,7 @@ export function Explorer() {
     return featured ? [featured.id] : [];
   }, [view.matches, filteredMatches]);
 
-  const { shards } = useMatches(selectedIds);
+  const { shards, isLoading: shardsLoading } = useMatches(selectedIds);
 
   const scene = useMemo(
     () => buildScene(shards, view.map, { players: view.players, events: view.events, hidden }),
@@ -76,8 +77,15 @@ export function Explorer() {
             <div className="h-full w-full animate-pulse bg-[#07080a]" />
           )}
         </main>
-        <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-l border-border bg-panel p-4 lg:flex">
-          <div className="mt-auto">
+        <aside className="hidden w-80 shrink-0 flex-col gap-6 overflow-y-auto border-l border-border bg-panel p-4 lg:flex">
+          <MatchPanel
+            mapId={view.map}
+            shards={shards}
+            loading={shardsLoading}
+            selectedCount={selectedIds.length}
+            onRemove={(id) => update({ matches: selectedIds.filter((m) => m !== id) })}
+          />
+          <div className="mt-auto border-t border-border pt-4">
             <Legend />
           </div>
         </aside>

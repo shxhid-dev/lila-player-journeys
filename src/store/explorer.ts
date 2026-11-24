@@ -14,6 +14,13 @@ export interface Viewport {
   y: number;
 }
 
+export interface Hover {
+  kind: "journey" | "event";
+  key: string;
+  x: number;
+  y: number;
+}
+
 interface ExplorerState {
   size: { w: number; h: number };
   view: Viewport;
@@ -22,8 +29,14 @@ interface ExplorerState {
   stage: Konva.Stage | null;
   /** Journeys the user switched off in the player list, by journeyKey. */
   hidden: ReadonlySet<string>;
+  /** What the pointer is over on the canvas, with its screen position. */
+  hover: Hover | null;
+  /** Journey emphasised from the player list (hovering a row). */
+  focus: string | null;
 
   toggleHidden: (key: string) => void;
+  setHover: (hover: Hover | null) => void;
+  setFocus: (key: string | null) => void;
   setSize: (w: number, h: number) => void;
   setView: (view: Viewport, byUser?: boolean) => void;
   fit: () => void;
@@ -46,7 +59,11 @@ export const useExplorer = create<ExplorerState>((set, get) => ({
   userMoved: false,
   stage: null,
   hidden: new Set(),
+  hover: null,
+  focus: null,
 
+  setHover: (hover) => set({ hover }),
+  setFocus: (focus) => set({ focus }),
   toggleHidden: (key) => {
     const hidden = new Set(get().hidden);
     if (hidden.has(key)) hidden.delete(key);
