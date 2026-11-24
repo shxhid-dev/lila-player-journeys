@@ -33,6 +33,14 @@ interface ExplorerState {
   hover: Hover | null;
   /** Journey emphasised from the player list (hovering a row). */
   focus: string | null;
+  /** Playback clock in match seconds. Live while playing; mirrored to the URL when paused. */
+  time: number;
+  playing: boolean;
+  speed: number;
+
+  setTime: (t: number) => void;
+  setPlaying: (playing: boolean) => void;
+  setSpeed: (speed: number) => void;
 
   toggleHidden: (key: string) => void;
   setHover: (hover: Hover | null) => void;
@@ -61,6 +69,13 @@ export const useExplorer = create<ExplorerState>((set, get) => ({
   hidden: new Set(),
   hover: null,
   focus: null,
+  time: 0,
+  playing: false,
+  speed: 4,
+
+  setTime: (time) => set({ time: Math.max(0, time) }),
+  setPlaying: (playing) => set({ playing }),
+  setSpeed: (speed) => set({ speed }),
 
   setHover: (hover) => set({ hover }),
   setFocus: (focus) => set({ focus }),
