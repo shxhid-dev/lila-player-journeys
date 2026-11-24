@@ -126,22 +126,26 @@ README rule: UUID `user_id` = human, numeric `user_id` = bot. That holds for
   1379 (2) and 1402 (1) emit `Position` and `Loot` and never `BotPosition`.
   Their loot and kill counts look like a human's (e.g. 1429 in `de5aa1ae…`: 28
   loot, 4 bot kills, 120 position samples). The same ID 1429 emits normal
-  `BotPosition` in other matches. All 17 files are in the **16 matches that
-  have no UUID file at all**.
+  `BotPosition` in other matches. Each file is in a different match. **16 of
+  them are in the 16 matches that have no UUID file at all**. The 17th
+  (`fbbc5d02…`) shares its match with a UUID human.
 
 **Decision:** classify by telemetry, not by ID. A file that emits
 `Position`/`Loot` is human-controlled, and one that emits `BotPosition` is a
 bot. The ID type is kept as a separate field. The 17 anomalous files show up
-as humans with an "unrecognized account ID" flag. This changes 17 of 1,243
-files and is listed in ARCHITECTURE.md's assumptions table.
+as humans with a "numeric account ID" note. This changes 17 of 1,243 files and
+is listed in ARCHITECTURE.md's assumptions table.
 
 ## 6. Match composition (important for the product)
 
-| Humans per match   | Matches |
-| ------------------ | ------: |
-| 0 (bot-only files) |      16 |
-| 1                  |     779 |
-| 2                  |       1 |
+Humans per match, by ID type (README rule) and by telemetry (what the tool
+uses):
+
+| Humans per match | By ID | By telemetry |
+| ---------------- | ----: | -----------: |
+| 0                |    16 |            0 |
+| 1                |   779 |          794 |
+| 2                |     1 |            2 |
 
 | Bot files per match | Matches |
 | ------------------- | ------: |
