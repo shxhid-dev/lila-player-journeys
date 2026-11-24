@@ -79,10 +79,12 @@ export default function MapCanvas({
     return () => ro.disconnect();
   }, [setSize]);
 
+  // The Stage only mounts once the container has a size, so register it then.
+  const hasSize = size.w > 0;
   useEffect(() => {
     setStage(stageRef.current);
     return () => setStage(null);
-  }, [setStage]);
+  }, [setStage, hasSize]);
 
   // New map, new framing.
   useEffect(() => {

@@ -1,15 +1,21 @@
 "use client";
 
+import { CircleHelp, Download, Link2 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useViewState } from "@/hooks/use-view-state";
 import { useHeatPoints, useManifest, useMatches } from "@/lib/data";
+import { exportStagePng } from "@/lib/export";
 import { binPoints, selectHeatPoints, shardHeatPoints } from "@/lib/heatmap";
 import type { MapId } from "@/lib/maps";
 import { buildScene, pickFeaturedMatch } from "@/lib/scene";
+import { HEAT_LAYERS } from "@/lib/types";
 import { useExplorer } from "@/store/explorer";
 import { Filters } from "./filters";
 import { HeatmapControls } from "./heatmap-controls";
+import { HelpDialog } from "./help-dialog";
 import { Legend } from "./legend";
 import { MatchList } from "./match-list";
 import { MatchPanel } from "./match-panel";
@@ -114,13 +120,81 @@ export function Explorer() {
 
   const asset = manifest.data?.maps[view.map];
 
+  // Share, export, help and global shortcuts.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 2000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const copyLink = () =>
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => setToast("Link to this view copied"))
+      .catch(() => setToast("Couldn't access the clipboard. Copy the address bar instead."));
+  const exportPng = () => {
+    const stage = useExplorer.getState().stage;
+    if (!stage) return;
+    const tag = selectedIds.length ? selectedIds.map((id) => id.slice(0, 8)).join("+") : "all";
+    exportStagePng(stage, `lila-${view.map}-${tag}-t${Math.floor(time)}.png`);
+    setToast("PNG exported");
+  };
+
+  useShortcuts({
+    "?": () => setHelpOpen(true),
+    h: () =>
+      update((s) => {
+        const order = [null, ...HEAT_LAYERS] as const;
+        return { heat: order[(order.indexOf(s.heat) + 1) % order.length] };
+      }),
+    g: () => update((s) => ({ calibration: !s.calibration })),
+    "0": () => useExplorer.getState().fit(),
+    "+": () => useExplorer.getState().zoomBy(1.4),
+    "=": () => useExplorer.getState().zoomBy(1.4),
+    "-": () => useExplorer.getState().zoomBy(1 / 1.4),
+    e: exportPng,
+    l: copyLink,
+  });
+
   return (
     <div className="flex h-dvh flex-col">
       <TopBar
         map={view.map}
         matchCounts={matchCounts}
         onMapChange={(map) => update({ map, matches: null, t: null })}
+        actions={
+          <>
+            <Button variant="ghost" size="sm" onClick={copyLink} title="Copy link to this view (L)">
+              <Link2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Copy link</span>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={exportPng} title="Export view as PNG (E)">
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export PNG</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setHelpOpen(true)}
+              aria-label="Help and keyboard shortcuts (?)"
+              title="Help and keyboard shortcuts (?)"
+            >
+              <CircleHelp className="h-4 w-4" />
+            </Button>
+          </>
+        }
       />
+      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-md border border-border bg-panel-raised px-3 py-2 text-sm shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-72 shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-panel p-4 md:flex">
           <Filters
