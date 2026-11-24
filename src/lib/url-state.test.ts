@@ -31,6 +31,23 @@ describe("url state", () => {
     expect(parse(qs)).toEqual(view);
   });
 
+  it("distinguishes 'no match specified' from 'explicitly none selected'", () => {
+    expect(parse("").matches).toBeNull();
+    const none = parse("match=none");
+    expect(none.matches).toEqual([]);
+    expect(serializeViewState(none)).toBe("match=none");
+  });
+
+  it("caps the selection at the compare limit", () => {
+    const ids = [
+      "d0a38c30-d476-4305-857d-ece9e65f72e6",
+      "de5aa1ae-6246-4cfb-9941-adf5996ef678",
+      "d3a3297e-2cdf-4a49-8450-09119b91a779",
+      "a7a60c42-249b-4fab-855c-7c0a969b5f76",
+    ];
+    expect(parse(`match=${ids.join(",")}`).matches).toEqual(ids.slice(0, 3));
+  });
+
   it("keeps an explicitly empty player or event filter (everything hidden)", () => {
     const s = parse("players=&events=");
     expect(s.players).toEqual([]);
@@ -42,6 +59,6 @@ describe("url state", () => {
     const s = parse(
       "map=Atlantis&dates=yesterday&match=../../etc&players=alien&heat=fire&opacity=7&bin=3&t=-4",
     );
-    expect(s).toEqual({ ...DEFAULT_VIEW, players: [] });
+    expect(s).toEqual({ ...DEFAULT_VIEW, matches: [], players: [] });
   });
 });

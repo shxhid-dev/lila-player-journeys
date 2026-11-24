@@ -10,8 +10,11 @@ export interface ViewState {
   map: MapId;
   /** Empty = all dates. */
   dates: string[];
-  /** Selected match ids (journeys + playback). */
-  matches: string[];
+  /**
+   * Selected match ids (journeys + playback). null = not specified, which the UI
+   * resolves to the map's featured match. [] = explicitly nothing selected.
+   */
+  matches: string[] | null;
   players: PlayerKind[];
   events: EventType[];
   heat: HeatLayer | null;
@@ -26,11 +29,13 @@ export interface ViewState {
 }
 
 export const HEAT_BINS = [4, 8, 16, 32] as const;
+/** Compare mode cap: the journey palette validates for 3 colours on the dark map. */
+export const MAX_SELECTED_MATCHES = 3;
 
 export const DEFAULT_VIEW: ViewState = {
   map: "AmbroseValley",
   dates: [],
-  matches: [],
+  matches: null,
   players: ["human", "bot"],
   events: [...EVENT_TYPES],
   heat: null,
@@ -62,7 +67,11 @@ export function parseViewState(params: URLSearchParams): ViewState {
   return {
     map: isMapId(map) ? map : DEFAULT_VIEW.map,
     dates: list(params.get("dates")).filter((d) => DATE_RE.test(d)),
-    matches: list(params.get("match")).filter((m) => MATCH_RE.test(m)),
+    matches: params.has("match")
+      ? list(params.get("match"))
+          .filter((m) => MATCH_RE.test(m))
+          .slice(0, MAX_SELECTED_MATCHES)
+      : null,
     players: params.has("players") ? players : DEFAULT_VIEW.players,
     events: params.has("events") ? events : DEFAULT_VIEW.events,
     heat: (HEAT_LAYERS as readonly string[]).includes(heat ?? "") ? (heat as HeatLayer) : null,
@@ -83,7 +92,7 @@ export function serializeViewState(s: ViewState): string {
   const p = new URLSearchParams();
   if (s.map !== DEFAULT_VIEW.map) p.set("map", s.map);
   if (s.dates.length) p.set("dates", [...s.dates].sort().join(","));
-  if (s.matches.length) p.set("match", s.matches.join(","));
+  if (s.matches) p.set("match", s.matches.length ? s.matches.join(",") : "none");
   if (!sameSet(s.players, DEFAULT_VIEW.players)) p.set("players", s.players.join(","));
   if (!sameSet(s.events, DEFAULT_VIEW.events)) p.set("events", s.events.join(","));
   if (s.heat) p.set("heat", s.heat);
