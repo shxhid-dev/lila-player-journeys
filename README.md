@@ -57,8 +57,9 @@ in Slack as a single link.
 
 ### Performance
 
-Lighthouse (desktop, production build): **Performance 98 · Accessibility 100 · Best Practices
-100 · SEO 100**. The first view needs about 350 KB (manifest, one match, a 2048 px minimap).
+Lighthouse (desktop): **Accessibility 100 · Best Practices 100 · SEO 100**. Performance scores
+**98** on a local production build and **88–92** on the live Vercel URL, where it varies with the
+network. The first view needs about 350 KB (manifest, one match, a 2048 px minimap).
 Heatmap points load only when a heatmap is switched on, and the match list renders rows in pages
 as you scroll.
 
