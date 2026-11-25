@@ -67,6 +67,12 @@ export default function MapCanvas({
       setHover(key && p ? { kind: "event", key, x: p.x, y: p.y } : null),
     [setHover],
   );
+  const onSeek = useCallback((t: number) => {
+    const { setPlaying, setTime } = useExplorer.getState();
+    setPlaying(false);
+    setTime(t);
+  }, []);
+
   // Pointer over anything with a hover card; otherwise the container's grab cursor shows.
   const hovering = hover !== null;
   useEffect(() => {
@@ -204,6 +210,7 @@ export default function MapCanvas({
             scale={view.scale}
             highlight={highlight}
             onHover={onEventHover}
+            onSeek={onSeek}
           />
         </Stage>
       )}

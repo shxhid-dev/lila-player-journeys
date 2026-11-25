@@ -54,11 +54,14 @@ export function HoverCard({
     >
       <PlayerHeader sj={sj} />
       {event ? (
-        <div className="flex items-center gap-2">
-          <MarkerIcon type={event.type} />
-          <span>{describeEvent(event.type, event.detail)}</span>
-          <span className="ml-auto text-muted tabular-nums">{formatClock(event.t)}</span>
-        </div>
+        <>
+          <div className="flex items-center gap-2">
+            <MarkerIcon type={event.type} />
+            <span>{describeEvent(event.type, event.detail)}</span>
+            <span className="ml-auto text-muted tabular-nums">{formatClock(event.t)}</span>
+          </div>
+          <p className="text-[11px] text-muted">Click to jump playback to this moment</p>
+        </>
       ) : (
         <>
           <p className="text-muted">

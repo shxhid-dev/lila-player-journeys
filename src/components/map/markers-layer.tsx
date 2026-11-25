@@ -11,6 +11,8 @@ interface MarkersLayerProps {
   scale: number;
   highlight: string | null;
   onHover?: (key: string | null, pointer?: { x: number; y: number }) => void;
+  /** Click or tap a marker to scrub playback to that event. */
+  onSeek?: (t: number) => void;
 }
 
 /**
@@ -46,6 +48,7 @@ export const MarkersLayer = memo(function MarkersLayer({
   scale,
   highlight,
   onHover,
+  onSeek,
 }: MarkersLayerProps) {
   const inv = 1 / scale;
   return (
@@ -65,6 +68,8 @@ export const MarkersLayer = memo(function MarkersLayer({
               onHover?.(e.key, ev.target.getStage()?.getPointerPosition() ?? undefined)
             }
             onMouseLeave={() => onHover?.(null)}
+            onClick={() => onSeek?.(e.t)}
+            onTap={() => onSeek?.(e.t)}
           >
             <Glyph type={e.type} />
           </Group>

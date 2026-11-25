@@ -10,18 +10,23 @@ import { useHeatPoints, useManifest, useMatches } from "@/lib/data";
 import { exportStagePng } from "@/lib/export";
 import { binPoints, selectHeatPoints, shardHeatPoints } from "@/lib/heatmap";
 import type { MapId } from "@/lib/maps";
-import { buildScene, pickFeaturedMatch } from "@/lib/scene";
+import { buildScene, journeyColors, journeyKey, pickFeaturedMatch } from "@/lib/scene";
 import { HEAT_LAYERS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "@/store/explorer";
 import { Filters } from "./filters";
 import { HeatmapControls } from "./heatmap-controls";
-import { HelpDialog } from "./help-dialog";
+import { listMatches, stepMatch, type SortKey } from "@/lib/match-list";
 import { Legend } from "./legend";
 import { MatchList } from "./match-list";
 import { MatchPanel } from "./match-panel";
 import { Timeline } from "./timeline";
 import { TopBar } from "./top-bar";
+
+// The help dialog (and Radix Dialog) only loads the first time it's opened.
+const HelpDialog = dynamic(() => import("./help-dialog").then((m) => m.HelpDialog), {
+  ssr: false,
+});
 
 const MapCanvas = dynamic(() => import("@/components/map/map-canvas"), {
   ssr: false,
@@ -141,6 +146,30 @@ export function Explorer() {
   const [drawer, setDrawer] = useState<"filters" | "match" | null>(null);
   const toggleDrawer = (d: "filters" | "match") => setDrawer((cur) => (cur === d ? null : d));
 
+  // Each selected match's stripe in the list uses its first human's actual path colour.
+  const stripeColors = useMemo(() => {
+    const colors = journeyColors(shards, view.map);
+    const out: Record<string, string> = {};
+    for (const s of shards) {
+      const human = s.journeys.find((j) => j.kind === "human");
+      const c = human && colors.get(journeyKey(s.id, human.id));
+      if (c) out[s.id] = c;
+    }
+    return out;
+  }, [shards, view.map]);
+
+  // Match list order is shared by the list and the N / P keys.
+  const [listQuery, setListQuery] = useState("");
+  const [listSort, setListSort] = useState<SortKey>("players");
+  const listRows = useMemo(
+    () => listMatches(filteredMatches, listQuery, listSort),
+    [filteredMatches, listQuery, listSort],
+  );
+  const goToMatch = (step: 1 | -1) => {
+    const next = stepMatch(listRows, selectedIds[0], step);
+    if (next && next.id !== selectedIds[0]) update({ matches: [next.id], t: null });
+  };
+
   // Share, export, help and global shortcuts.
   const [helpOpen, setHelpOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -177,6 +206,8 @@ export function Explorer() {
     "-": () => useExplorer.getState().zoomBy(1 / 1.4),
     e: exportPng,
     l: copyLink,
+    n: () => goToMatch(1),
+    p: () => goToMatch(-1),
   });
 
   return (
@@ -231,7 +262,7 @@ export function Explorer() {
           </>
         }
       />
-      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      {helpOpen && <HelpDialog open onOpenChange={setHelpOpen} />}
       {toast && (
         <div
           role="status"
@@ -275,8 +306,13 @@ export function Explorer() {
             selectedCount={selectedIds.length}
           />
           <MatchList
-            matches={filteredMatches}
+            rows={listRows}
+            query={listQuery}
+            onQueryChange={setListQuery}
+            sort={listSort}
+            onSortChange={setListSort}
             selected={selectedIds}
+            stripeColors={stripeColors}
             onSelect={(ids) => {
               update({ matches: ids, t: null });
               setDrawer(null);

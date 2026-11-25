@@ -198,6 +198,7 @@ export function Timeline({ scene }: { scene: Scene }) {
           </Slider.Track>
           <Slider.Thumb
             className="block h-4 w-4 rounded-full border-2 border-accent bg-background focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:outline-none"
+            aria-label="Match time"
             aria-valuetext={formatClock(time)}
           />
         </Slider.Root>

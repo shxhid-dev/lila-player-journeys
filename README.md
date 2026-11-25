@@ -23,7 +23,7 @@ in Slack as a single link.
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Map view**         | Correct minimap per map. Wheel/pinch zoom around the cursor, drag to pan, reset. Sharp at deep zoom (4096 px tiles load on demand)                                                                                                                                           |
 | **Player journeys**  | Humans are solid lines in validated colour-blind-safe colours. Bots are dashed grey underneath. Spawn dots and a "last seen alive" ring for survivors. Hover a path for the player card (outcome, K/D, loot, time alive)                                                     |
-| **Event markers**    | Kill ▲, death ✕, storm death ◆ and loot ● use shape _and_ colour. Constant on-screen size at any zoom. Hover for a plain-language description                                                                                                                                |
+| **Event markers**    | Kill ▲, death ✕, storm death ◆ and loot ● use shape _and_ colour. Constant on-screen size at any zoom. Hover for a plain-language description, click to jump playback to that moment                                                                                         |
 | **Filters**          | Map, date (UTC, Feb 14 flagged partial), humans/bots, event types. Match list with ID search and sorting. Ctrl/⌘-click to compare up to 3 matches                                                                                                                            |
 | **Timeline**         | Play/pause, scrub, 0.5×–16×, colour-coded combat ticks on the track (click one to jump to that moment), live count of who's alive. Paths grow and markers appear as the match unfolds                                                                                        |
 | **Heatmaps**         | Traffic, kills, deaths, storm deaths and loot, across all filtered matches or only the selected ones. Slice by match phase (0–3 min, 3–8 min, 8 min+) to separate the opening drop from the extraction and storm endgame. Opacity, bin size and a log-scaled single-hue ramp |
@@ -31,11 +31,13 @@ in Slack as a single link.
 | **Calibration grid** | World-space grid, axes and the README worked example, drawn through the same transform as the data, with a cursor readout of world coordinates                                                                                                                               |
 | **Share & export**   | The URL holds every setting, including playback time. Copy link (L) and export the current view as PNG (E)                                                                                                                                                                   |
 
-| Calibration grid                                           | Hover card                                         |
-| ---------------------------------------------------------- | -------------------------------------------------- |
-| ![Calibration grid](docs/img/feature-calibration-grid.jpg) | ![Hover card](docs/img/feature-hover-card.jpg)     |
-| **Deaths heatmap**                                         | **Loot heatmap**                                   |
-| ![Deaths heatmap](docs/img/insight-ambrose-deaths.jpg)     | ![Loot heatmap](docs/img/insight-ambrose-loot.jpg) |
+| Compare matches (Ctrl/⌘-click)                             | Heatmap sliced to the endgame (8 min+)                 |
+| ---------------------------------------------------------- | ------------------------------------------------------ |
+| ![Compare matches](docs/img/feature-compare.jpg)           | ![Endgame heatmap](docs/img/feature-heatmap-phase.jpg) |
+| **Calibration grid**                                       | **Hover card**                                         |
+| ![Calibration grid](docs/img/feature-calibration-grid.jpg) | ![Hover card](docs/img/feature-hover-card.jpg)         |
+| **Deaths heatmap**                                         | **Loot heatmap**                                       |
+| ![Deaths heatmap](docs/img/insight-ambrose-deaths.jpg)     | ![Loot heatmap](docs/img/insight-ambrose-loot.jpg)     |
 
 ### Keyboard shortcuts
 
@@ -45,12 +47,20 @@ in Slack as a single link.
 | `←` `→`      | Step 5 s (`Shift` = 30 s) |
 | `Home` `End` | Start / end of match      |
 | `[` `]`      | Slower / faster           |
+| `N` `P`      | Next / previous match     |
 | `H`          | Cycle heatmap layer       |
 | `G`          | Calibration grid          |
 | `+` `−` `0`  | Zoom in / out / reset     |
 | `E`          | Export PNG                |
 | `L`          | Copy link to this view    |
 | `?`          | Help                      |
+
+### Performance
+
+Lighthouse (desktop, production build): **Performance 98 · Accessibility 100 · Best Practices
+100 · SEO 100**. The first view needs about 350 KB (manifest, one match, a 2048 px minimap).
+Heatmap points load only when a heatmap is switched on, and the match list renders rows in pages
+as you scroll.
 
 ## Tech stack
 

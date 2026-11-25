@@ -114,7 +114,9 @@ function MatchCard({
             <th className="pb-1 text-right font-normal" title="Time alive">
               Alive
             </th>
-            <th className="w-6" />
+            <th className="w-6">
+              <span className="sr-only">Show on map</span>
+            </th>
           </tr>
         </thead>
         <tbody>

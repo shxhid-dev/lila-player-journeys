@@ -8,6 +8,7 @@ export const SHORTCUTS: [string, string][] = [
   ["← / →", "Step 5 s (hold Shift for 30 s)"],
   ["Home / End", "Jump to start / end of match"],
   ["[ / ]", "Slower / faster playback"],
+  ["N / P", "Next / previous match in the list"],
   ["H", "Cycle heatmap layer"],
   ["G", "Toggle calibration grid"],
   ["+ / −", "Zoom in / out"],

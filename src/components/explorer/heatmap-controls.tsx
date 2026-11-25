@@ -121,7 +121,10 @@ export function HeatmapControls({
               <Slider.Track className="relative h-1 grow rounded-full bg-panel-raised">
                 <Slider.Range className="absolute h-full rounded-full bg-accent/60" />
               </Slider.Track>
-              <Slider.Thumb className="block h-3.5 w-3.5 rounded-full border-2 border-accent bg-background focus-visible:outline-none" />
+              <Slider.Thumb
+                aria-label="Heatmap opacity"
+                className="block h-3.5 w-3.5 rounded-full border-2 border-accent bg-background focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:outline-none"
+              />
             </Slider.Root>
           </label>
 

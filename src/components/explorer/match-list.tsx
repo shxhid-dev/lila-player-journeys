@@ -1,45 +1,64 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MarkerIcon } from "@/components/ui/marker-icon";
 import { SectionTitle } from "@/components/ui/toggle-chip";
-import { HUMAN_COLORS } from "@/lib/colors";
 import { formatClock, shortId } from "@/lib/journey";
 import { formatUtc } from "@/lib/labels";
+import { SORTS, type SortKey } from "@/lib/match-list";
 import type { MatchSummary } from "@/lib/types";
 import { MAX_SELECTED_MATCHES } from "@/lib/url-state";
 import { cn } from "@/lib/utils";
 
-type SortKey = "players" | "combat" | "longest" | "newest";
-const SORTS: Record<SortKey, { label: string; fn: (a: MatchSummary, b: MatchSummary) => number }> =
-  {
-    players: { label: "Most players", fn: (a, b) => b.humans + b.bots - (a.humans + a.bots) },
-    combat: {
-      label: "Most combat",
-      fn: (a, b) => b.kills + b.deaths + b.storm - (a.kills + a.deaths + a.storm),
-    },
-    longest: { label: "Longest", fn: (a, b) => b.duration - a.duration },
-    newest: { label: "Newest", fn: (a, b) => b.startUtc - a.startUtc },
-  };
-
 interface MatchListProps {
-  matches: MatchSummary[];
+  /** Already searched and sorted (see listMatches). */
+  rows: MatchSummary[];
+  query: string;
+  onQueryChange: (query: string) => void;
+  sort: SortKey;
+  onSortChange: (sort: SortKey) => void;
   selected: string[];
+  /** Path colour of each selected match's first human, so the list stripe matches the map. */
+  stripeColors: Record<string, string>;
   onSelect: (ids: string[]) => void;
   loading: boolean;
 }
 
-export function MatchList({ matches, selected, onSelect, loading }: MatchListProps) {
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<SortKey>("players");
+/**
+ * Rows render in pages as the list scrolls. Ambrose Valley alone has 566 matches,
+ * and drawing every row up front cost ~9k DOM nodes and most of the page's
+ * main-thread blocking time.
+ */
+const PAGE = 40;
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return matches
-      .filter((m) => !q || m.id.startsWith(q))
-      .sort((a, b) => SORTS[sort].fn(a, b) || b.startUtc - a.startUtc);
-  }, [matches, query, sort]);
+export function MatchList({
+  rows,
+  query,
+  onQueryChange,
+  sort,
+  onSortChange,
+  selected,
+  stripeColors,
+  onSelect,
+  loading,
+}: MatchListProps) {
+  const [limit, setLimit] = useState(PAGE);
+  const sentinel = useRef<HTMLLIElement>(null);
+
+  // A new filter, search or sort starts again from the first page.
+  useEffect(() => setLimit(PAGE), [rows]);
+
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => entry.isIntersecting && setLimit((l) => l + PAGE),
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [limit, rows]);
 
   // Click selects one match. Ctrl/Cmd/Shift-click adds it to the comparison (max 3).
   const choose = (id: string, additive: boolean) => {
@@ -61,7 +80,7 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
           <Search className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => onQueryChange(e.target.value)}
             placeholder="Match ID…"
             className="h-7 w-full rounded-md border border-border bg-background pr-2 pl-7 font-mono text-xs placeholder:font-sans placeholder:text-muted focus:border-accent/60 focus:outline-none"
           />
@@ -70,7 +89,7 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
           <span className="sr-only">Sort matches</span>
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
+            onChange={(e) => onSortChange(e.target.value as SortKey)}
             className="h-7 rounded-md border border-border bg-background px-1.5 text-xs focus:border-accent/60 focus:outline-none"
           >
             {Object.entries(SORTS).map(([k, s]) => (
@@ -82,7 +101,8 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
         </label>
       </div>
       <p className="mb-2 text-[11px] leading-snug text-muted">
-        Click to replay. Ctrl/⌘-click to compare up to {MAX_SELECTED_MATCHES}.
+        Click to replay, <kbd className="font-mono">N</kbd>/<kbd className="font-mono">P</kbd> for
+        next/previous. Ctrl/⌘-click compares up to {MAX_SELECTED_MATCHES}.
       </p>
 
       <ul
@@ -99,9 +119,8 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
             No matches for these filters.
           </li>
         )}
-        {rows.map((m) => {
-          const index = selected.indexOf(m.id);
-          const isSelected = index >= 0;
+        {rows.slice(0, limit).map((m) => {
+          const isSelected = selected.includes(m.id);
           return (
             <li key={m.id}>
               <button
@@ -118,7 +137,9 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
                 <span
                   className="h-7 w-1 shrink-0 rounded-full"
                   style={{
-                    background: isSelected ? (HUMAN_COLORS[index] ?? "#f0efec") : "transparent",
+                    background: isSelected
+                      ? (stripeColors[m.id] ?? "var(--accent)")
+                      : "transparent",
                   }}
                 />
                 <span className="min-w-0 flex-1">
@@ -155,6 +176,11 @@ export function MatchList({ matches, selected, onSelect, loading }: MatchListPro
             </li>
           );
         })}
+        {limit < rows.length && (
+          <li ref={sentinel} className="py-2 text-center text-[11px] text-muted" aria-hidden>
+            Loading more…
+          </li>
+        )}
       </ul>
     </section>
   );
