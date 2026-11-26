@@ -57,9 +57,14 @@ export const DEFAULT_VIEW: ViewState = {
   t: null,
 };
 
-const list = (v: string | null) => (v ? v.split(",").filter(Boolean) : []);
+/** Comma list with empties and duplicates removed, in first-seen order. */
+const list = (v: string | null) => (v ? [...new Set(v.split(",").filter(Boolean))] : []);
+/** A number param; an empty or missing value counts as absent (Number("") would be 0). */
+const num = (v: string | null) => (v === null || v.trim() === "" ? NaN : Number(v));
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MATCH_RE = /^[0-9a-f-]{36}$/;
+/** Below this the heatmap is effectively invisible, and the slider's minimum is 0.1. */
+export const MIN_HEAT_OPACITY = 0.1;
 
 export function parseViewState(params: URLSearchParams): ViewState {
   const map = params.get("map");
@@ -70,10 +75,9 @@ export function parseViewState(params: URLSearchParams): ViewState {
     (EVENT_TYPES as readonly string[]).includes(e),
   );
   const heat = params.get("heat");
-  const opacity = Number(params.get("opacity"));
-  const bin = Number(params.get("bin"));
-  const t = params.get("t");
-  const tNum = t === null ? NaN : Number(t);
+  const opacity = num(params.get("opacity"));
+  const bin = num(params.get("bin"));
+  const t = num(params.get("t"));
 
   return {
     map: isMapId(map) ? map : DEFAULT_VIEW.map,
@@ -88,12 +92,35 @@ export function parseViewState(params: URLSearchParams): ViewState {
     heat: (HEAT_LAYERS as readonly string[]).includes(heat ?? "") ? (heat as HeatLayer) : null,
     heatScope: params.get("scope") === "selected" ? "selected" : "filtered",
     heatOpacity:
-      params.has("opacity") && opacity >= 0 && opacity <= 1 ? opacity : DEFAULT_VIEW.heatOpacity,
+      Number.isFinite(opacity) && opacity >= MIN_HEAT_OPACITY && opacity <= 1
+        ? opacity
+        : DEFAULT_VIEW.heatOpacity,
     heatBin: (HEAT_BINS as readonly number[]).includes(bin) ? bin : DEFAULT_VIEW.heatBin,
     heatPhase: isHeatPhase(params.get("phase")) ? (params.get("phase") as HeatPhase) : "all",
     calibration: params.get("grid") === "1",
-    t: Number.isFinite(tNum) && tNum >= 0 ? Math.floor(tNum) : null,
+    t: Number.isFinite(t) && t >= 0 ? Math.floor(t) : null,
   };
+}
+
+/**
+ * Reuse the previous state's arrays when their contents are unchanged. Every URL write
+ * produces a fresh parse, and without this, unrelated changes (an opacity tick, the
+ * mirrored playback time) would give `dates` and friends new identities. That would
+ * re-bin heatmaps, rebuild the scene and reset the match list.
+ */
+export function shareViewState(prev: ViewState | null, next: ViewState): ViewState {
+  if (!prev) return next;
+  const keep = <T>(a: readonly T[] | null, b: readonly T[] | null) =>
+    a && b && a.length === b.length && a.every((x, i) => x === b[i]) ? a : b;
+  const shared = {
+    ...next,
+    dates: keep(prev.dates, next.dates) as string[],
+    matches: keep(prev.matches, next.matches) as string[] | null,
+    players: keep(prev.players, next.players) as PlayerKind[],
+    events: keep(prev.events, next.events) as EventType[],
+  };
+  const changed = (Object.keys(shared) as (keyof ViewState)[]).some((k) => shared[k] !== prev[k]);
+  return changed ? shared : prev;
 }
 
 const sameSet = <T>(a: readonly T[], b: readonly T[]) =>

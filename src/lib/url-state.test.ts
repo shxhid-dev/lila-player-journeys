@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_VIEW, parseViewState, serializeViewState, type ViewState } from "./url-state";
+import {
+  DEFAULT_VIEW,
+  parseViewState,
+  serializeViewState,
+  shareViewState,
+  type ViewState,
+} from "./url-state";
 
 const parse = (qs: string) => parseViewState(new URLSearchParams(qs));
 
@@ -49,6 +55,21 @@ describe("url state", () => {
     expect(parse(`match=${ids.join(",")}`).matches).toEqual(ids.slice(0, 3));
   });
 
+  it("treats empty numeric params as absent and keeps opacity visible", () => {
+    const s = parse("opacity=&t=&bin=");
+    expect(s.heatOpacity).toBe(DEFAULT_VIEW.heatOpacity);
+    expect(s.t).toBeNull();
+    expect(s.heatBin).toBe(DEFAULT_VIEW.heatBin);
+    expect(parse("opacity=0").heatOpacity).toBe(DEFAULT_VIEW.heatOpacity);
+    expect(parse("opacity=0.1").heatOpacity).toBe(0.1);
+  });
+
+  it("de-duplicates match ids and dates", () => {
+    const id = "d0a38c30-d476-4305-857d-ece9e65f72e6";
+    expect(parse(`match=${id},${id}`).matches).toEqual([id]);
+    expect(parse("dates=2026-02-11,2026-02-11").dates).toEqual(["2026-02-11"]);
+  });
+
   it("keeps an explicitly empty player or event filter (everything hidden)", () => {
     const s = parse("players=&events=");
     expect(s.players).toEqual([]);
@@ -61,5 +82,30 @@ describe("url state", () => {
       "map=Atlantis&dates=yesterday&match=../../etc&players=alien&heat=fire&opacity=7&bin=3&t=-4&phase=toString",
     );
     expect(s).toEqual({ ...DEFAULT_VIEW, matches: [], players: [] });
+  });
+});
+
+describe("shareViewState", () => {
+  it("reuses unchanged arrays so downstream memos stay valid", () => {
+    const a = parseViewState(new URLSearchParams("dates=2026-02-11&players=human&heat=deaths"));
+    const b = parseViewState(
+      new URLSearchParams("dates=2026-02-11&players=human&heat=deaths&opacity=0.5"),
+    );
+    const shared = shareViewState(a, b);
+    expect(shared.dates).toBe(a.dates);
+    expect(shared.players).toBe(a.players);
+    expect(shared.heatOpacity).toBe(0.5);
+  });
+
+  it("returns the previous object when nothing changed at all", () => {
+    const a = parseViewState(new URLSearchParams("dates=2026-02-11"));
+    const b = parseViewState(new URLSearchParams("dates=2026-02-11"));
+    expect(shareViewState(a, b)).toBe(a);
+  });
+
+  it("takes new arrays when their contents change", () => {
+    const a = parseViewState(new URLSearchParams("dates=2026-02-11"));
+    const b = parseViewState(new URLSearchParams("dates=2026-02-12"));
+    expect(shareViewState(a, b).dates).toEqual(["2026-02-12"]);
   });
 });
