@@ -150,18 +150,21 @@ def build_journey(g: pd.DataFrame, match_start: int) -> dict:
     killed_ts = set(g.loc[g["event"] == "Killed", "ts"])
     self_kill_ts = kills_ts & killed_ts
 
+    # The path is the movement samples, plus the death position as its final point.
+    # Samples are kept even when the player hasn't moved: a hold from t=100 to t=160
+    # must replay as standing still, not as a slow glide between the two ends. Only
+    # exact repeats (same second, same spot) are dropped.
     path: list[float] = []
     events: list[list] = []
-    last_xz = None
+    last = None
     for row in g.itertuples(index=False):
         t = int(row.ts - match_start)
         xz = (r1(row.x), r1(row.z))
-        if xz != last_xz:
+        is_movement = row.event in MOVEMENT
+        etype, detail = (None, None) if is_movement else build_event(row, kind, self_kill_ts)
+        if (is_movement or etype in ("death", "storm")) and (t, *xz) != last:
             path.extend([t, xz[0], xz[1]])
-            last_xz = xz
-        if row.event in MOVEMENT:
-            continue
-        etype, detail = build_event(row, kind, self_kill_ts)
+            last = (t, *xz)
         if etype:
             events.append([t, etype, xz[0], xz[1], detail])
 
