@@ -3,21 +3,24 @@
 import { CircleHelp, Download, Link2, PanelRight, SlidersHorizontal } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { preload } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useViewState } from "@/hooks/use-view-state";
 import { useHeatPoints, useManifest, useMatches } from "@/lib/data";
 import { exportStagePng } from "@/lib/export";
 import { binPoints, selectHeatPoints, shardHeatPoints } from "@/lib/heatmap";
-import type { MapId } from "@/lib/maps";
+import { shortId } from "@/lib/journey";
+import { MAPS, minimapUrl, type MapId } from "@/lib/maps";
+import { listMatches, stepMatch, type SortKey } from "@/lib/match-list";
+import { serializeViewState } from "@/lib/url-state";
 import { buildScene, journeyColors, journeyKey, pickFeaturedMatch } from "@/lib/scene";
 import { HEAT_LAYERS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "@/store/explorer";
 import { Filters } from "./filters";
-import { HeatmapControls } from "./heatmap-controls";
-import { listMatches, stepMatch, type SortKey } from "@/lib/match-list";
-import { Legend } from "./legend";
+import { HEAT_LABELS, HeatmapControls } from "./heatmap-controls";
+import { MapLegend } from "./legend";
 import { MatchList } from "./match-list";
 import { MatchPanel } from "./match-panel";
 import { Timeline } from "./timeline";
@@ -33,8 +36,39 @@ const MapCanvas = dynamic(() => import("@/components/map/map-canvas"), {
   loading: () => <div className="h-full w-full animate-pulse bg-[#07080a]" />,
 });
 
+/**
+ * Mirrors the paused playback position into the URL (debounced) so a link reproduces
+ * the moment. It's its own component so that only it, not the whole page, re-renders
+ * as the clock ticks.
+ */
+function PlaybackUrlSync({
+  duration,
+  ready,
+  urlTime,
+  update,
+}: {
+  duration: number;
+  ready: boolean;
+  urlTime: React.RefObject<number | null>;
+  update: (patch: { t: number | null }) => void;
+}) {
+  const time = useExplorer((s) => s.time);
+  const playing = useExplorer((s) => s.playing);
+  useEffect(() => {
+    if (playing || !ready || duration === 0) return;
+    const id = setTimeout(() => {
+      const t = time >= duration ? null : Math.floor(time);
+      if (t !== urlTime.current) update({ t });
+    }, 250);
+    return () => clearTimeout(id);
+  }, [time, playing, ready, duration, urlTime, update]);
+  return null;
+}
+
 export function Explorer() {
   const [view, update] = useViewState();
+  // Start the minimap download right away, in parallel with the manifest and canvas code.
+  preload(minimapUrl(view.map), { as: "image", fetchPriority: "high" });
   const manifest = useManifest();
   const hidden = useExplorer((s) => s.hidden);
 
@@ -48,19 +82,39 @@ export function Explorer() {
     () => (manifest.data?.matches ?? []).filter((m) => m.map === view.map),
     [manifest.data, view.map],
   );
+  // Only dates that exist in the data count. A stale or hand-edited date must not fall
+  // back to "all dates" in one place (the heatmap) and "no matches" in another (the list).
+  const dates = useMemo(() => {
+    const known = manifest.data?.dates;
+    return known ? view.dates.filter((d) => known.includes(d)) : view.dates;
+  }, [view.dates, manifest.data]);
+  const unknownDatesOnly = view.dates.length > 0 && dates.length === 0 && !!manifest.data;
   // Matches on this map within the date filter.
   const filteredMatches = useMemo(
-    () => mapMatches.filter((m) => view.dates.length === 0 || view.dates.includes(m.date)),
-    [mapMatches, view.dates],
+    () =>
+      unknownDatesOnly
+        ? []
+        : mapMatches.filter((m) => dates.length === 0 || dates.includes(m.date)),
+    [mapMatches, dates, unknownDatesOnly],
   );
 
+  // Selection: explicit ids from the URL that exist on this map, or the featured match.
+  // Ids from another map or unknown to the manifest are dropped instead of loading a
+  // card for the wrong map or a 404.
+  const requestedIds = view.matches;
   const selectedIds = useMemo(() => {
-    if (view.matches) return view.matches;
+    if (requestedIds) {
+      if (!manifest.data) return requestedIds;
+      const onMap = new Set(mapMatches.map((m) => m.id));
+      return requestedIds.filter((id) => onMap.has(id));
+    }
     const featured = pickFeaturedMatch(filteredMatches);
     return featured ? [featured.id] : [];
-  }, [view.matches, filteredMatches]);
+  }, [requestedIds, manifest.data, mapMatches, filteredMatches]);
+  const droppedSelection =
+    !!manifest.data && !!requestedIds && requestedIds.length > 0 && selectedIds.length === 0;
 
-  const { shards, isLoading: shardsLoading } = useMatches(selectedIds);
+  const { shards, isLoading: shardsLoading, isError: shardsError } = useMatches(selectedIds);
 
   const scene = useMemo(
     () => buildScene(shards, view.map, { players: view.players, events: view.events, hidden }),
@@ -68,27 +122,22 @@ export function Explorer() {
   );
 
   // Playback clock. A new selection opens on the URL's t (shared link) or the full match.
-  const time = useExplorer((s) => s.time);
-  const playing = useExplorer((s) => s.playing);
-  const selectionKey = `${view.map}|${selectedIds.join(",")}|${scene.duration}`;
+  // It waits until every selected shard has loaded, so a compare link's t isn't clamped
+  // to whichever match happened to arrive first.
+  const selectionKey = `${view.map}|${selectedIds.join(",")}`;
   const urlTime = useRef(view.t);
   urlTime.current = view.t;
+  const [initialisedFor, setInitialisedFor] = useState<string | null>(null);
   useEffect(() => {
-    const { setTime, setPlaying } = useExplorer.getState();
+    if (shardsLoading || initialisedFor === selectionKey) return;
+    setInitialisedFor(selectionKey);
+    const { setTime, setPlaying, setFocus, setHover } = useExplorer.getState();
     setPlaying(false);
+    setFocus(null);
+    setHover(null);
     const t = urlTime.current;
     setTime(t !== null && t < scene.duration ? t : scene.duration);
-  }, [selectionKey, scene.duration]);
-
-  // Mirror the paused position into the URL (debounced) so a link reproduces the moment.
-  useEffect(() => {
-    if (playing || scene.duration === 0) return;
-    const id = setTimeout(() => {
-      const t = time >= scene.duration ? null : Math.floor(time);
-      if (t !== urlTime.current) update({ t });
-    }, 250);
-    return () => clearTimeout(id);
-  }, [time, playing, scene.duration, update]);
+  }, [selectionKey, shardsLoading, scene.duration, initialisedFor]);
 
   // Heatmap: aggregate over every filtered match (pre-built per-map points) or only
   // the selected matches (computed from their shards). Binning is pure; the canvas
@@ -105,11 +154,12 @@ export function Explorer() {
         view.heatPhase,
       );
     } else if (heatQuery.data && manifest.data) {
+      if (unknownDatesOnly) return null;
       const allDates = manifest.data.dates;
       points = selectHeatPoints(heatQuery.data, {
         layer: view.heat,
         players: view.players,
-        dateIdx: view.dates.map((d) => allDates.indexOf(d)).filter((i) => i >= 0),
+        dateIdx: dates.map((d) => allDates.indexOf(d)),
         phase: view.heatPhase,
       });
     } else return null;
@@ -121,7 +171,8 @@ export function Explorer() {
     view.heatPhase,
     view.map,
     view.players,
-    view.dates,
+    dates,
+    unknownDatesOnly,
     shards,
     heatQuery.data,
     manifest.data,
@@ -129,9 +180,23 @@ export function Explorer() {
 
   const asset = manifest.data?.maps[view.map];
 
+  // Tab title names the view, so several shared links stay tellable apart.
+  useEffect(() => {
+    const parts = [MAPS[view.map].label];
+    if (selectedIds.length === 1) parts.push(`Match ${shortId(selectedIds[0])}`);
+    else if (selectedIds.length > 1) parts.push(`${selectedIds.length} matches`);
+    if (view.heat) parts.push(`${HEAT_LABELS[view.heat]} heatmap`);
+    document.title = `${parts.join(" · ")} | LILA BLACK Player Journeys`;
+  }, [view.map, view.heat, selectedIds]);
+
   // A short hint on the canvas when the current settings draw nothing at all.
   const canvasHint = (() => {
     if (!manifest.data || shardsLoading) return null;
+    if (unknownDatesOnly)
+      return "The dates in this link aren't in the dataset (10–14 Feb 2026). Pick dates in the filters.";
+    if (droppedSelection)
+      return `The match in this link isn't on ${MAPS[view.map].label}. Pick one from the match list.`;
+    if (shardsError) return "Couldn't load this match's data. Check your connection and reload.";
     if (view.heat && !heatGrid && !heatQuery.isLoading)
       return "No points for this heatmap with the current filters. Try another phase, date or player type.";
     if (view.heat) return null;
@@ -143,8 +208,26 @@ export function Explorer() {
   })();
 
   // Below the md / lg breakpoints the side panels become drawers.
+  // Opening one moves focus into it; Escape or closing returns focus to the button
+  // that opened it, so keyboard and screen-reader users never end up on <body>.
   const [drawer, setDrawer] = useState<"filters" | "match" | null>(null);
-  const toggleDrawer = (d: "filters" | "match") => setDrawer((cur) => (cur === d ? null : d));
+  const drawerOpener = useRef<HTMLElement | null>(null);
+  const toggleDrawer = (d: "filters" | "match") => {
+    if (drawer !== d) drawerOpener.current = document.activeElement as HTMLElement | null;
+    setDrawer((cur) => (cur === d ? null : d));
+  };
+  const prevDrawer = useRef(drawer);
+  useEffect(() => {
+    const was = prevDrawer.current;
+    prevDrawer.current = drawer;
+    if (drawer) {
+      document.getElementById(drawer === "filters" ? "filters-panel" : "match-panel")?.focus();
+      const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(null);
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }
+    if (was) drawerOpener.current?.focus();
+  }, [drawer]);
 
   // Each selected match's stripe in the list uses its first human's actual path colour.
   const stripeColors = useMemo(() => {
@@ -179,16 +262,24 @@ export function Explorer() {
     return () => clearTimeout(id);
   }, [toast]);
 
-  const copyLink = () =>
+  // The link uses the live playback time, not the debounced URL value, so copying
+  // mid-playback shares the moment on screen.
+  const copyLink = () => {
+    const now = useExplorer.getState().time;
+    const t = scene.duration === 0 || now >= scene.duration ? null : Math.floor(now);
+    const qs = serializeViewState({ ...view, t });
+    const url = `${window.location.origin}${window.location.pathname}${qs ? `?${qs}` : ""}`;
     navigator.clipboard
-      .writeText(window.location.href)
+      .writeText(url)
       .then(() => setToast("Link to this view copied"))
       .catch(() => setToast("Couldn't access the clipboard. Copy the address bar instead."));
+  };
   const exportPng = () => {
     const stage = useExplorer.getState().stage;
     if (!stage) return;
     const tag = selectedIds.length ? selectedIds.map((id) => id.slice(0, 8)).join("+") : "all";
-    exportStagePng(stage, `lila-${view.map}-${tag}-t${Math.floor(time)}.png`);
+    const t = Math.floor(useExplorer.getState().time);
+    exportStagePng(stage, `lila-${view.map}-${tag}-t${t}.png`);
     setToast("PNG exported");
   };
 
@@ -211,7 +302,7 @@ export function Explorer() {
   });
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <TopBar
         map={view.map}
         matchCounts={matchCounts}
@@ -285,7 +376,10 @@ export function Explorer() {
         )}
         <aside
           id="filters-panel"
+          tabIndex={-1}
+          aria-label="Filters and matches"
           className={cn(
+            "focus:outline-none",
             "absolute inset-y-0 left-0 z-30 w-72 max-w-[85vw] shrink-0 flex-col gap-4 overflow-y-auto border-r border-border bg-panel p-4 shadow-2xl",
             "md:static md:z-auto md:flex md:max-w-none md:shadow-none",
             drawer === "filters" ? "flex" : "hidden",
@@ -331,7 +425,6 @@ export function Explorer() {
                 mapId={view.map}
                 asset={asset}
                 scene={scene}
-                time={time}
                 heat={heatGrid ? { grid: heatGrid, opacity: view.heatOpacity } : null}
                 hint={canvasHint}
                 calibration={view.calibration}
@@ -340,12 +433,22 @@ export function Explorer() {
             ) : (
               <div className="h-full w-full animate-pulse bg-[#07080a]" />
             )}
+            {asset && <MapLegend />}
           </div>
           <Timeline scene={scene} />
+          <PlaybackUrlSync
+            duration={scene.duration}
+            ready={!shardsLoading && initialisedFor === selectionKey}
+            urlTime={urlTime}
+            update={update}
+          />
         </main>
         <aside
           id="match-panel"
+          tabIndex={-1}
+          aria-label="Match details"
           className={cn(
+            "focus:outline-none",
             "absolute inset-y-0 right-0 z-30 w-80 max-w-[90vw] shrink-0 flex-col gap-6 overflow-y-auto border-l border-border bg-panel p-4 shadow-2xl",
             "lg:static lg:z-auto lg:flex lg:max-w-none lg:shadow-none",
             drawer === "match" ? "flex" : "hidden",
@@ -358,9 +461,6 @@ export function Explorer() {
             selectedCount={selectedIds.length}
             onRemove={(id) => update({ matches: selectedIds.filter((m) => m !== id) })}
           />
-          <div className="mt-auto border-t border-border pt-4">
-            <Legend />
-          </div>
         </aside>
       </div>
     </div>

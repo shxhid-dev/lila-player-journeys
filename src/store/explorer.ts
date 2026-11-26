@@ -49,6 +49,8 @@ interface ExplorerState {
   setView: (view: Viewport, byUser?: boolean) => void;
   fit: () => void;
   zoomBy: (factor: number, center?: { x: number; y: number }) => void;
+  /** Frame a minimap-space box, e.g. one player's whole path. */
+  fitBounds: (bounds: Bounds) => void;
   setStage: (stage: Konva.Stage | null) => void;
 }
 
@@ -83,7 +85,8 @@ export const useExplorer = create<ExplorerState>((set, get) => ({
     const hidden = new Set(get().hidden);
     if (hidden.has(key)) hidden.delete(key);
     else hidden.add(key);
-    set({ hidden });
+    // A hidden player can't stay emphasised, or every other path would sit dimmed.
+    set({ hidden, focus: get().focus === key ? null : get().focus });
   },
   setSize: (w, h) => {
     const { userMoved } = get();
@@ -104,5 +107,33 @@ export const useExplorer = create<ExplorerState>((set, get) => ({
     const my = (c.y - view.y) / view.scale;
     set({ view: { scale, x: c.x - mx * scale, y: c.y - my * scale }, userMoved: true });
   },
+  fitBounds: (b) => {
+    const { size } = get();
+    set({ view: viewportForBounds(b, size.w, size.h), userMoved: true });
+  },
   setStage: (stage) => set({ stage }),
 }));
+
+export interface Bounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/**
+ * Viewport that frames a minimap-space box with padding, centred, within the zoom
+ * limits. A tiny box (a player who barely moved) is padded so it doesn't zoom to max.
+ */
+export function viewportForBounds(b: Bounds, w: number, h: number, padPx = 48): Viewport {
+  const fit = fitViewport(w, h).scale;
+  const MIN_SPAN = 60; // minimap px
+  const bw = Math.max(b.maxX - b.minX, MIN_SPAN);
+  const bh = Math.max(b.maxY - b.minY, MIN_SPAN);
+  const availW = Math.max(w - padPx * 2, 1);
+  const availH = Math.max(h - padPx * 2, 1);
+  const scale = clamp(Math.min(availW / bw, availH / bh), fit * MIN_ZOOM, fit * MAX_ZOOM);
+  const cx = (b.minX + b.maxX) / 2;
+  const cy = (b.minY + b.maxY) / 2;
+  return { scale, x: w / 2 - cx * scale, y: h / 2 - cy * scale };
+}

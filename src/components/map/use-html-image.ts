@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-/** Load an image element for Konva. Returns null until it has decoded. */
-export function useHtmlImage(src: string | null): HTMLImageElement | null {
-  const [loaded, setLoaded] = useState<{ src: string; img: HTMLImageElement } | null>(null);
+export type ImageState =
+  | { status: "loading"; image: null }
+  | { status: "ready"; image: HTMLImageElement }
+  | { status: "error"; image: null };
+
+/** Load and decode an image element for Konva, reporting loading / ready / error. */
+export function useHtmlImage(src: string | null): ImageState {
+  const [result, setResult] = useState<{ src: string; state: ImageState } | null>(null);
 
   useEffect(() => {
     if (!src) return;
@@ -14,12 +19,12 @@ export function useHtmlImage(src: string | null): HTMLImageElement | null {
     img.src = src;
     img
       .decode()
-      .then(() => !cancelled && setLoaded({ src, img }))
-      .catch(() => !cancelled && setLoaded(null));
+      .then(() => !cancelled && setResult({ src, state: { status: "ready", image: img } }))
+      .catch(() => !cancelled && setResult({ src, state: { status: "error", image: null } }));
     return () => {
       cancelled = true;
     };
   }, [src]);
 
-  return loaded && loaded.src === src ? loaded.img : null;
+  return result && result.src === src ? result.state : { status: "loading", image: null };
 }

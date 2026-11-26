@@ -49,7 +49,8 @@ export function CalibrationLayer({ mapId, scale }: { mapId: MapId; scale: number
         stroke={AXIS}
         strokeWidth={1.5}
         strokeScaleEnabled={false}
-        dash={[6 * inv, 4 * inv]}
+        // With strokeScaleEnabled off, Konva applies the dash in screen pixels.
+        dash={[6, 4]}
       />
       {ticks(b.minX, b.maxX, step).map((x) => {
         const { px } = worldToMinimap(x, 0, mapId);

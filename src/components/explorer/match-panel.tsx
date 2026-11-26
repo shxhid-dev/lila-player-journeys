@@ -3,11 +3,11 @@
 import { Eye, EyeOff, Info, X } from "lucide-react";
 import { useMemo } from "react";
 import { PathSwatch } from "@/components/ui/marker-icon";
-import { formatClock, shortId } from "@/lib/journey";
+import { formatClock, projectJourney, shortId } from "@/lib/journey";
 import { FLAG_NOTES, formatUtc, OUTCOME_LABELS, playerName } from "@/lib/labels";
 import type { MapId } from "@/lib/maps";
 import { journeyColors, journeyKey } from "@/lib/scene";
-import type { MatchShard } from "@/lib/types";
+import type { Journey, MatchShard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useExplorer } from "@/store/explorer";
 
@@ -40,6 +40,21 @@ function MatchCard({
   const hidden = useExplorer((s) => s.hidden);
   const toggleHidden = useExplorer((s) => s.toggleHidden);
   const setFocus = useExplorer((s) => s.setFocus);
+  const fitBounds = useExplorer((s) => s.fitBounds);
+
+  // Frame one player's whole path on the map.
+  const zoomTo = (j: Journey) => {
+    const { points } = projectJourney(j, shard.map);
+    if (!points.length) return;
+    const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    for (let i = 0; i < points.length; i += 2) {
+      b.minX = Math.min(b.minX, points[i]);
+      b.maxX = Math.max(b.maxX, points[i]);
+      b.minY = Math.min(b.minY, points[i + 1]);
+      b.maxY = Math.max(b.maxY, points[i + 1]);
+    }
+    fitBounds(b);
+  };
 
   const totals = useMemo(() => {
     const t = { kills: 0, deaths: 0, storm: 0, loot: 0 };
@@ -131,13 +146,21 @@ function MatchCard({
                 onMouseLeave={() => setFocus(null)}
               >
                 <td className="py-1 pr-2">
-                  <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isHidden}
+                    onClick={() => zoomTo(j)}
+                    title="Zoom the map to this player's path"
+                    className="flex w-full items-center gap-2 rounded text-left focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:outline-none"
+                  >
                     <PathSwatch color={colors.get(key) ?? "#888"} dashed={j.kind === "bot"} />
-                    <div className="min-w-0">
-                      <div className="truncate">{playerName(j)}</div>
-                      <div className="text-[10px] text-muted">{OUTCOME_LABELS[j.outcome]}</div>
-                    </div>
-                  </div>
+                    <span className="min-w-0">
+                      <span className="block truncate group-hover:underline">{playerName(j)}</span>
+                      <span className="block text-[10px] text-muted">
+                        {OUTCOME_LABELS[j.outcome]}
+                      </span>
+                    </span>
+                  </button>
                 </td>
                 <td className="py-1 text-right">
                   {j.stats.kills}/{j.stats.deaths}

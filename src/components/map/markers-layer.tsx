@@ -10,6 +10,8 @@ interface MarkersLayerProps {
   time: number;
   scale: number;
   highlight: string | null;
+  /** Off during playback: skips redrawing the hit canvas on every frame. */
+  interactive?: boolean;
   onHover?: (key: string | null, pointer?: { x: number; y: number }) => void;
   /** Click or tap a marker to scrub playback to that event. */
   onSeek?: (t: number) => void;
@@ -47,12 +49,13 @@ export const MarkersLayer = memo(function MarkersLayer({
   time,
   scale,
   highlight,
+  interactive = true,
   onHover,
   onSeek,
 }: MarkersLayerProps) {
   const inv = 1 / scale;
   return (
-    <Layer>
+    <Layer listening={interactive}>
       {events.map((e) => {
         if (e.t > time) return null;
         const dimmed = highlight !== null && highlight !== e.journeyKey;
@@ -69,7 +72,11 @@ export const MarkersLayer = memo(function MarkersLayer({
             }
             onMouseLeave={() => onHover?.(null)}
             onClick={() => onSeek?.(e.t)}
-            onTap={() => onSeek?.(e.t)}
+            onTap={(ev) => {
+              // Touch: jump there and show the card, since there was no hover to see it.
+              onSeek?.(e.t);
+              onHover?.(e.key, ev.target.getStage()?.getPointerPosition() ?? undefined);
+            }}
           >
             <Glyph type={e.type} />
           </Group>

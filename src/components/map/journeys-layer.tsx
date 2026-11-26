@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Circle, Group, Layer, Line } from "react-konva";
 import { CASING } from "@/lib/colors";
 import { pathUntil, positionAt } from "@/lib/journey";
@@ -12,6 +12,8 @@ interface JourneysLayerProps {
   /** Screen px per map px, so dashes and markers keep a constant on-screen size. */
   scale: number;
   highlight: string | null;
+  /** Off during playback: skips redrawing the hit canvas on every frame. */
+  interactive?: boolean;
   onHover?: (key: string | null, pointer?: { x: number; y: number }) => void;
 }
 
@@ -61,11 +63,13 @@ function JourneyPath({
             points={points}
             stroke={sj.color}
             strokeWidth={width}
-            dash={sj.dashed ? [6 * inv, 4 * inv] : undefined}
+            // Screen pixels: strokeScaleEnabled is off, so Konva doesn't scale the dash.
+            dash={sj.dashed ? [6, 4] : undefined}
             lineJoin="round"
             lineCap="round"
             strokeScaleEnabled={false}
-            hitStrokeWidth={14 * inv}
+            // Also screen pixels, for the same reason: a ~14px band at any zoom.
+            hitStrokeWidth={14}
             perfectDrawEnabled={false}
             onMouseEnter={(e) =>
               onHover?.(sj.key, e.target.getStage()?.getPointerPosition() ?? undefined)
@@ -74,6 +78,8 @@ function JourneyPath({
               onHover?.(sj.key, e.target.getStage()?.getPointerPosition() ?? undefined)
             }
             onMouseLeave={() => onHover?.(null)}
+            // Touch has no hover, so a tap opens the player card.
+            onTap={(e) => onHover?.(sj.key, e.target.getStage()?.getPointerPosition() ?? undefined)}
           />
         </>
       )}
@@ -126,14 +132,19 @@ export const JourneysLayer = memo(function JourneysLayer({
   time,
   scale,
   highlight,
+  interactive = true,
   onHover,
 }: JourneysLayerProps) {
   // Bots first so human paths always sit on top.
-  const ordered = [...journeys].sort(
-    (a, b) => Number(a.journey.kind === "human") - Number(b.journey.kind === "human"),
+  const ordered = useMemo(
+    () =>
+      [...journeys].sort(
+        (a, b) => Number(a.journey.kind === "human") - Number(b.journey.kind === "human"),
+      ),
+    [journeys],
   );
   return (
-    <Layer>
+    <Layer listening={interactive}>
       {ordered.map((sj) => (
         <JourneyPath
           key={sj.key}

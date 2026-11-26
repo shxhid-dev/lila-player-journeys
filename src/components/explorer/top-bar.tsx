@@ -30,11 +30,12 @@ export function TopBar({ map, matchCounts, onMapChange, actions }: TopBarProps) 
             onClick={() => onMapChange(id)}
             aria-current={id === map ? "page" : undefined}
             className={cn(
-              "flex-1 rounded px-3 py-1 text-sm whitespace-nowrap transition-colors md:flex-none",
+              "min-w-0 flex-1 truncate rounded px-2 py-1 text-sm whitespace-nowrap transition-colors sm:px-3 md:flex-none",
               id === map ? "bg-panel-raised text-foreground" : "text-muted hover:text-foreground",
             )}
           >
-            {MAPS[id].label}
+            <span className="sm:hidden">{MAPS[id].short}</span>
+            <span className="hidden sm:inline">{MAPS[id].label}</span>
             {matchCounts[id] !== undefined && (
               <span className="ml-1.5 hidden text-xs text-muted tabular-nums sm:inline">
                 {matchCounts[id]}
@@ -44,7 +45,7 @@ export function TopBar({ map, matchCounts, onMapChange, actions }: TopBarProps) 
         ))}
       </nav>
 
-      <div className="ml-auto flex items-center gap-1">{actions}</div>
+      <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">{actions}</div>
     </header>
   );
 }

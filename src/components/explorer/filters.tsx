@@ -31,6 +31,9 @@ export function Filters({ view, dates, mapMatches, update }: FiltersProps) {
 
   // Empty means "all dates". Clicking a chip while all are on isolates that day.
   const toggleDate = (d: string) => {
+    // Switching off the only selected day would silently mean "all dates"; keep it
+    // instead. "All dates" has its own button.
+    if (view.dates.length === 1 && view.dates[0] === d) return;
     const next = view.dates.length === 0 ? [d] : toggle(view.dates, d);
     update({ dates: next.length === dates.length ? [] : next });
   };

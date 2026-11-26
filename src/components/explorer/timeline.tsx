@@ -5,6 +5,7 @@ import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { SPEEDS, usePlaybackLoop } from "@/hooks/use-playback";
+import { shouldIgnoreShortcut } from "@/hooks/use-shortcuts";
 import { EVENT_STYLES } from "@/lib/colors";
 import { formatClock } from "@/lib/journey";
 import { describeEvent } from "@/lib/labels";
@@ -14,13 +15,6 @@ import { useExplorer } from "@/store/explorer";
 
 const STEP = 5; // seconds: one position sample
 const BIG_STEP = 30;
-
-function isTyping(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName))
-  );
-}
 
 export function Timeline({ scene }: { scene: Scene }) {
   const { duration } = scene;
@@ -39,10 +33,11 @@ export function Timeline({ scene }: { scene: Scene }) {
     setPlaying(!playing);
   };
 
-  // Playback keys. Space and arrows skip text inputs so typing a match ID still works.
+  // Playback keys. They stand aside for text fields, the help dialog, focused sliders
+  // (which use the arrows themselves) and focused buttons (Space activates them).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (disabled || isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (disabled || shouldIgnoreShortcut(e)) return;
       const { time: t, speed: s } = useExplorer.getState();
       const step = e.shiftKey ? BIG_STEP : STEP;
       const i = SPEEDS.indexOf(s as (typeof SPEEDS)[number]);
@@ -208,7 +203,10 @@ export function Timeline({ scene }: { scene: Scene }) {
         className="hidden shrink-0 text-xs text-muted tabular-nums xl:block"
         title="Journeys with telemetry alive at this moment"
       >
-        Alive {alive.humans}H · {alive.bots}B
+        <span className="text-foreground">{alive.humans}</span>{" "}
+        {alive.humans === 1 ? "human" : "humans"} ·{" "}
+        <span className="text-foreground">{alive.bots}</span> {alive.bots === 1 ? "bot" : "bots"}{" "}
+        alive
       </div>
 
       {/* Narrow layouts: one button that cycles speeds, so the scrubber keeps its room. */}
